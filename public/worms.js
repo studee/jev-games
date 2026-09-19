@@ -359,6 +359,18 @@
   function clamp(n, a, b) {
     return Math.max(a, Math.min(b, n));
   }
+  function parseMode(raw) {
+    if (raw === "jev-vs-jev" || raw === "you-vs-you")
+      return raw;
+    return "you-vs-jev";
+  }
+  function teamTag(team) {
+    if (state.mode === "you-vs-you")
+      return team === "you" ? "P1" : "P2";
+    if (team === "you" && state.mode === "you-vs-jev")
+      return "YOU";
+    return "JEV";
+  }
   function parseWeapon(raw) {
     if (!raw)
       return;
@@ -375,7 +387,7 @@
     syncChoiceLinks();
     const w = current();
     if (w && (state.phase === "turn" || state.phase === "charge")) {
-      setStatus(`${w.team === "you" && state.mode === "you-vs-jev" ? "YOU" : "JEV"} · ${w.name}`, `wind ${state.wind >= 0 ? "+" : ""}${state.wind} · ${WEAPON[id].label}`);
+      setStatus(`${teamTag(w.team)} · ${w.name}`, `wind ${state.wind >= 0 ? "+" : ""}${state.wind} · ${WEAPON[id].label}`);
     }
   }
   function addFx(x, y, vx, vy, life, kind, size, color) {
@@ -725,6 +737,8 @@
       feedList.removeChild(feedList.lastChild);
   }
   function activeIsJev() {
+    if (state.mode === "you-vs-you")
+      return false;
     const w = current();
     if (!w)
       return false;
@@ -738,7 +752,7 @@
     const jevLeft = living("jev").length;
     if (!youLeft || !jevLeft) {
       state.phase = "over";
-      const winner = youLeft ? "YOU" : "JEV";
+      const winner = youLeft ? teamTag("you") : teamTag("jev");
       setStatus(`${winner} WINS`, "space to rematch");
       return;
     }
@@ -759,7 +773,7 @@
     const nearest = living(w.team === "you" ? "jev" : "you")[0];
     if (nearest)
       w.facing = nearest.x >= w.x ? 1 : -1;
-    setStatus(`${w.team === "you" && state.mode === "you-vs-jev" ? "YOU" : "JEV"} · ${w.name}`, `wind ${state.wind >= 0 ? "+" : ""}${state.wind} · ${WEAPON[state.weapon].label}`);
+    setStatus(`${teamTag(w.team)} · ${w.name}`, `wind ${state.wind >= 0 ? "+" : ""}${state.wind} · ${WEAPON[state.weapon].label}`);
   }
   function simulateShot(ox, oy, elev, power, facing, weapon = state.weapon, target = null) {
     const spec = WEAPON[weapon];
@@ -1695,7 +1709,7 @@
       ctx.fillStyle = "#fff4a3";
       ctx.font = `18px "Press Start 2P", monospace`;
       ctx.textAlign = "center";
-      ctx.fillText(living("you").length ? "YOU WIN" : "JEV WINS", W / 2, H / 2 - 10);
+      ctx.fillText(living("you").length ? `${teamTag("you")} WINS` : `${teamTag("jev")} WINS`, W / 2, H / 2 - 10);
       ctx.font = `10px "Press Start 2P", monospace`;
       ctx.fillStyle = "#f4f7fb";
       ctx.fillText("SPACE TO REMATCH", W / 2, H / 2 + 18);
@@ -1740,6 +1754,7 @@
   }
   function setMode(mode) {
     state.mode = mode;
+    document.body.classList.toggle("worms-pvp", mode === "you-vs-you");
     feedList?.replaceChildren();
     resetMatch();
     setWeapon(state.weapon);
@@ -1797,7 +1812,7 @@
     btn.addEventListener("click", (event) => {
       event.preventDefault();
       const mode = btn.dataset.mode;
-      if (mode === "you-vs-jev" || mode === "jev-vs-jev")
+      if (mode === "you-vs-jev" || mode === "you-vs-you" || mode === "jev-vs-jev")
         setMode(mode);
     });
   }
@@ -1814,14 +1829,14 @@
   initLatencyChart();
   {
     const q = new URLSearchParams(location.search);
-    const mode = q.get("mode") === "jev-vs-jev" ? "jev-vs-jev" : "you-vs-jev";
+    const mode = parseMode(q.get("mode"));
     const weapon = parseWeapon(q.get("weapon") ?? undefined) ?? "bazooka";
     setMode(mode);
     setWeapon(weapon);
   }
   window.addEventListener("popstate", () => {
     const q = new URLSearchParams(location.search);
-    setMode(q.get("mode") === "jev-vs-jev" ? "jev-vs-jev" : "you-vs-jev");
+    setMode(parseMode(q.get("mode")));
     const weapon = parseWeapon(q.get("weapon") ?? undefined);
     if (weapon)
       setWeapon(weapon);

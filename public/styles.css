@@ -233,6 +233,10 @@ body.drive-noguns .flight-crosshair {
   display: none;
 }
 
+body.worms-pvp .latency {
+  display: none;
+}
+
 .weapon-row {
   flex-wrap: wrap;
 }

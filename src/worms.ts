@@ -7,7 +7,7 @@ import type {
   WormsWeapon,
 } from "./types.ts";
 
-type Mode = "you-vs-jev" | "jev-vs-jev";
+type Mode = "you-vs-jev" | "you-vs-you" | "jev-vs-jev";
 
 function writeSearch(patch: Record<string, string | null>): void {
   const u = new URL(location.href);
@@ -290,6 +290,17 @@ function clamp(n: number, a: number, b: number): number {
   return Math.max(a, Math.min(b, n));
 }
 
+function parseMode(raw: string | null): Mode {
+  if (raw === "jev-vs-jev" || raw === "you-vs-you") return raw;
+  return "you-vs-jev";
+}
+
+function teamTag(team: Team): string {
+  if (state.mode === "you-vs-you") return team === "you" ? "P1" : "P2";
+  if (team === "you" && state.mode === "you-vs-jev") return "YOU";
+  return "JEV";
+}
+
 function parseWeapon(raw: string | undefined): WormsWeapon | undefined {
   if (!raw) return undefined;
   const s = raw.toLowerCase().trim();
@@ -305,7 +316,7 @@ function setWeapon(id: WormsWeapon): void {
   const w = current();
   if (w && (state.phase === "turn" || state.phase === "charge")) {
     setStatus(
-      `${w.team === "you" && state.mode === "you-vs-jev" ? "YOU" : "JEV"} · ${w.name}`,
+      `${teamTag(w.team)} · ${w.name}`,
       `wind ${state.wind >= 0 ? "+" : ""}${state.wind} · ${WEAPON[id].label}`,
     );
   }
@@ -698,6 +709,7 @@ function logDecision(kind: string, text: string): void {
 }
 
 function activeIsJev(): boolean {
+  if (state.mode === "you-vs-you") return false;
   const w = current();
   if (!w) return false;
   if (state.mode === "jev-vs-jev") return true;
@@ -710,7 +722,7 @@ function beginTurn(): void {
   const jevLeft = living("jev").length;
   if (!youLeft || !jevLeft) {
     state.phase = "over";
-    const winner = youLeft ? "YOU" : "JEV";
+    const winner = youLeft ? teamTag("you") : teamTag("jev");
     setStatus(`${winner} WINS`, "space to rematch");
     return;
   }
@@ -730,7 +742,7 @@ function beginTurn(): void {
   const nearest = living(w.team === "you" ? "jev" : "you")[0];
   if (nearest) w.facing = nearest.x >= w.x ? 1 : -1;
   setStatus(
-    `${w.team === "you" && state.mode === "you-vs-jev" ? "YOU" : "JEV"} · ${w.name}`,
+    `${teamTag(w.team)} · ${w.name}`,
     `wind ${state.wind >= 0 ? "+" : ""}${state.wind} · ${WEAPON[state.weapon].label}`,
   );
 }
@@ -1704,7 +1716,7 @@ function drawHud(): void {
     ctx.fillStyle = "#fff4a3";
     ctx.font = `18px "Press Start 2P", monospace`;
     ctx.textAlign = "center";
-    ctx.fillText(living("you").length ? "YOU WIN" : "JEV WINS", W / 2, H / 2 - 10);
+    ctx.fillText(living("you").length ? `${teamTag("you")} WINS` : `${teamTag("jev")} WINS`, W / 2, H / 2 - 10);
     ctx.font = `10px "Press Start 2P", monospace`;
     ctx.fillStyle = "#f4f7fb";
     ctx.fillText("SPACE TO REMATCH", W / 2, H / 2 + 18);
@@ -1749,6 +1761,7 @@ function resetMatch(): void {
 
 function setMode(mode: Mode): void {
   state.mode = mode;
+  document.body.classList.toggle("worms-pvp", mode === "you-vs-you");
   feedList?.replaceChildren();
   resetMatch();
   setWeapon(state.weapon);
@@ -1811,7 +1824,7 @@ for (const btn of modeButtons) {
   btn.addEventListener("click", (event) => {
     event.preventDefault();
     const mode = btn.dataset.mode;
-    if (mode === "you-vs-jev" || mode === "jev-vs-jev") setMode(mode);
+    if (mode === "you-vs-jev" || mode === "you-vs-you" || mode === "jev-vs-jev") setMode(mode);
   });
 }
 
@@ -1829,14 +1842,14 @@ resize();
 initLatencyChart();
 {
   const q = new URLSearchParams(location.search);
-  const mode = q.get("mode") === "jev-vs-jev" ? "jev-vs-jev" : "you-vs-jev";
+  const mode = parseMode(q.get("mode"));
   const weapon = parseWeapon(q.get("weapon") ?? undefined) ?? "bazooka";
   setMode(mode);
   setWeapon(weapon);
 }
 window.addEventListener("popstate", () => {
   const q = new URLSearchParams(location.search);
-  setMode(q.get("mode") === "jev-vs-jev" ? "jev-vs-jev" : "you-vs-jev");
+  setMode(parseMode(q.get("mode")));
   const weapon = parseWeapon(q.get("weapon") ?? undefined);
   if (weapon) setWeapon(weapon);
 });

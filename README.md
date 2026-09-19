@@ -66,6 +66,7 @@ Open **http://127.0.0.1:8765/**.
 | `/pong.html` | Pong |
 | `/invaders.html` | Invaders |
 | `/worms.html` | Worms |
+| `/worms.html?mode=you-vs-you` | Worms, two players (no Jev) |
 | `/flight.html` | Flight |
 | `/space.html` | Space |
 | `/space.html?mode=watch` | Space, watch Jevs |
