@@ -53,7 +53,6 @@ Open **http://127.0.0.1:8765/**.
 | `/pong.html` | Pong |
 | `/invaders.html` | Invaders |
 | `/worms.html` | Worms |
-| `/draw.html` | Draw |
 | `/flight.html` | Flight |
 | `/drive.html` | Drive (no guns) |
 | `/drive.html?guns=1` | Drive with guns |

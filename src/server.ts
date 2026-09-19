@@ -1,5 +1,4 @@
 import { join, normalize } from "node:path";
-import { handleDraw } from "./drawApi.ts";
 import type {
   DrivePilotResponse,
   DriveSnapshot,
@@ -429,7 +428,6 @@ const server = Bun.serve({
     if (req.method === "POST" && route === "/api/worms") return handleWorms(req);
     if (req.method === "POST" && route === "/api/flight") return handleFlight(req);
     if (req.method === "POST" && route === "/api/drive") return handleDrive(req);
-    if (req.method === "POST" && route === "/api/draw") return handleDraw(req);
     if (req.method !== "GET" && req.method !== "HEAD") {
       return new Response("Method not allowed", { status: 405 });
     }

@@ -4,7 +4,7 @@
   "module": "src/server.ts",
   "type": "module",
   "scripts": {
-    "build": "bun build src/game.ts --outfile public/game.js --target browser --format iife && bun build src/pong.ts --outfile public/pong.js --target browser --format iife && bun build src/invaders.ts --outfile public/invaders.js --target browser --format iife && bun build src/worms.ts --outfile public/worms.js --target browser --format iife && bun build src/draw.ts --outfile public/draw.js --target browser --format iife && bun build src/flight.ts --outfile public/flight.js --target browser --format iife && bun build src/drive.ts --outfile public/drive.js --target browser --format iife",
+    "build": "bun build src/game.ts --outfile public/game.js --target browser --format iife && bun build src/pong.ts --outfile public/pong.js --target browser --format iife && bun build src/invaders.ts --outfile public/invaders.js --target browser --format iife && bun build src/worms.ts --outfile public/worms.js --target browser --format iife && bun build src/flight.ts --outfile public/flight.js --target browser --format iife && bun build src/drive.ts --outfile public/drive.js --target browser --format iife",
     "start": "bun run build && bun src/server.ts",
     "dev": "bun run build && bun --watch src/server.ts",
     "typecheck": "bunx tsc --noEmit"

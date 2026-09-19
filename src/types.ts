@@ -164,27 +164,6 @@ export type JevResult = {
   answers?: Record<string, JevNoulAnswer | JevChoiceAnswer>;
 };
 
-export type DrawRequest = {
-  prompt: string;
-};
-
-export type DrawPixel = {
-  x: number;
-  y: number;
-  r: number;
-  g: number;
-  b: number;
-};
-
-export type DrawArea = {
-  x: number;
-  y: number;
-  w: number;
-  h: number;
-  ms: number;
-  pixels: DrawPixel[];
-};
-
 export type FlightManeuver = "pursue" | "lead" | "guns" | "climb" | "dive" | "break" | "extend";
 
 export type FlightSnapshot = {
