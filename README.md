@@ -67,9 +67,10 @@ Open **http://127.0.0.1:8765/**.
 | `/invaders.html` | Invaders |
 | `/worms.html` | Worms |
 | `/flight.html` | Flight |
+| `/space.html` | Space |
 | `/drive.html` | Drive (no guns) |
 | `/drive.html?guns=1` | Drive with guns |
 
 Mode rows are query-string links (`?mode=`, `?weapon=`, `?level=`).
 
-`public/game.js`, `pong.js`, `flight.js`, and `drive.js` are generated; `bun run build` writes them. `bun run typecheck` runs `tsc --noEmit`.
+`public/game.js`, `pong.js`, `flight.js`, `space.js`, and `drive.js` are generated; `bun run build` writes them. `bun run typecheck` runs `tsc --noEmit`.

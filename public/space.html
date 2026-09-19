@@ -6,8 +6,8 @@
       name="viewport"
       content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover"
     />
-    <meta name="theme-color" content="#6ec6ff" />
-    <title>Flight — arcade</title>
+    <meta name="theme-color" content="#02040a" />
+    <title>Space — arcade</title>
     <link rel="preconnect" href="https://fonts.googleapis.com" />
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
     <link
@@ -16,33 +16,31 @@
     />
     <link rel="stylesheet" href="/styles.css" />
   </head>
-  <body class="flight">
+  <body class="space">
     <main class="layout">
       <div class="shell shell-flight">
-        <canvas id="game" width="1280" height="720" tabindex="0" aria-label="Airplane flight simulator"></canvas>
+        <canvas id="game" width="1280" height="720" tabindex="0" aria-label="Solar system space combat"></canvas>
         <div class="flight-hud" aria-hidden="true">
           <div class="flight-readouts">
             <span><em id="hud-spd">0</em> kts</span>
-            <span><em id="hud-alt">0</em> ft</span>
+            <span><em id="hud-body">Earth</em></span>
             <span><em id="hud-hdg">000</em>°</span>
             <span><em id="hud-thr">0</em>%</span>
             <span>you <em id="hud-hp-you">5</em></span>
             <span>jevs <em id="hud-hp-jev">3</em></span>
-            <span><em id="hud-kills">0</em> / <span id="hud-kills-max">0</span> hits</span>
           </div>
           <div class="flight-crosshair" id="crosshair" aria-hidden="true"></div>
           <canvas id="hunt-arrows" aria-hidden="true"></canvas>
-          <div id="jev-bars" class="jev-bars" aria-label="Plane health"></div>
+          <div id="jev-bars" class="jev-bars" aria-label="Ship health"></div>
           <div class="flight-radar-wrap">
-            <canvas id="radar" width="176" height="176" aria-label="Radar showing Jev"></canvas>
-            <p class="flight-radar-meta"><em id="radar-rng">—</em> rng · <em id="radar-alt">LVL</em></p>
+            <canvas id="radar" width="176" height="176" aria-label="Solar system map"></canvas>
+            <p class="flight-radar-meta"><em id="radar-rng">—</em> rng · <em id="radar-alt">Earth</em></p>
           </div>
-          <div class="flight-ring"><em id="hud-ring">0</em> / <span id="hud-ring-max">0</span> rings</div>
         </div>
         <div id="flight-banner" class="flight-banner">
-          <p class="flight-banner-kicker">Free-for-all</p>
-          <p id="flight-banner-text">Three Jevs, everyone shoots everyone. Last plane standing wins.</p>
-          <p class="flight-banner-hint">Click the sky for engines, then fly</p>
+          <p class="flight-banner-kicker">Solar furball</p>
+          <p id="flight-banner-text">Three Jevs, lasers, last ship standing. The map is the solar system.</p>
+          <p class="flight-banner-hint">Click space for engines, then fly</p>
         </div>
       </div>
       <aside class="feed">
@@ -51,19 +49,19 @@
           <a href="/pong.html">Pong</a>
           <a href="/invaders.html">Invaders</a>
           <a href="/worms.html">Worms</a>
-          <a href="/flight.html" aria-current="page">Flight</a>
-          <a href="/space.html">Space</a>
+          <a href="/flight.html">Flight</a>
+          <a href="/space.html" aria-current="page">Space</a>
           <a href="/drive.html">Drive</a>
         </nav>
         <p class="feed-kicker">TypeSafe Jev</p>
-        <h1>Flight</h1>
+        <h1>Space</h1>
         <p class="feed-copy">
-          Three Jev fighters hunt you and each other. Guns only — last plane standing wins.
-          Five hits and you're spectating.
+          Dogfight across a playable solar system. Lasers only. Last ship standing wins.
+          Don’t kiss the Sun.
         </p>
         <div class="feed-stat">
           <span id="pilot-action">SCRAMBLE</span>
-          <span id="pilot-meta">waiting for Jev</span>
+          <span id="pilot-meta">near Earth</span>
         </div>
         <section class="latency" aria-label="Jev call latency">
           <div class="latency-head">
@@ -81,12 +79,12 @@
           <li><kbd>A</kbd><kbd>D</kbd> bank</li>
           <li><kbd>Q</kbd><kbd>E</kbd> yaw</li>
           <li><kbd>Shift</kbd> turbo</li>
-          <li><kbd>Space</kbd> / click guns</li>
+          <li><kbd>Space</kbd> / click lasers</li>
           <li><kbd>C</kbd> close cam / spectate</li>
           <li><kbd>R</kbd> restart</li>
         </ul>
       </aside>
     </main>
-    <script src="/flight.js"></script>
+    <script src="/space.js"></script>
   </body>
 </html>

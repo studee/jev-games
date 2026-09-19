@@ -298,6 +298,10 @@ body.drive-noguns .flight-crosshair {
   background: #6ec6ff;
 }
 
+body.space .shell-flight {
+  background: #02040a;
+}
+
 .flight-hud {
   position: absolute;
   inset: 0;

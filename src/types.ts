@@ -224,3 +224,9 @@ export type FlightPilotResponse = {
   error?: string;
   detail?: string;
 };
+
+export type SpaceManeuver = FlightManeuver;
+export type SpaceSnapshot = FlightSnapshot;
+export type SpacePilotResponse = FlightPilotResponse;
+
+

@@ -4,6 +4,8 @@ import type {
   DriveSnapshot,
   FlightPilotResponse,
   FlightSnapshot,
+  SpacePilotResponse,
+  SpaceSnapshot,
   GameSnapshot,
   InvadersPilotResponse,
   InvadersSnapshot,
@@ -353,6 +355,67 @@ async function handleFlight(req: Request): Promise<Response> {
   }
 }
 
+async function handleSpace(req: Request): Promise<Response> {
+  if (!API_KEY) return Response.json({ error: "JEV_API_KEY is not set" }, { status: 500 });
+  let state: SpaceSnapshot;
+  try {
+    state = (await req.json()) as SpaceSnapshot;
+  } catch {
+    return Response.json({ error: "invalid json" }, { status: 400 });
+  }
+  try {
+    const g = state.geometry;
+    const result = await systemOne(state, {
+      maneuver: {
+        type: "choice",
+        instructions:
+          "You fly a Jev starfighter in a solar-system free-for-all. Hunt and laser the ship in foe until they are dead. " +
+          "Everyone is a target. Last ship standing wins. Never run. Never extend. " +
+          "clock is where THEY are from YOUR nose (12 is ahead, 6 is behind). " +
+          "If they_have_guns_on_you, pick reverse: 180 the nose onto them, drift backwards, and fire lasers. " +
+          "Pick guns whenever lined_up is true.",
+        criteria: {
+          pursue: `Turn onto them. They are at ${g.clock}, bearing ${g.bearing_deg}°, range ${g.range}.`,
+          lead: `Aim ahead of their path and close. Range ${g.range}.`,
+          guns: `HOLD AND FIRE LASERS. lined_up=${g.lined_up}.`,
+          climb: `Pitch up while still turning toward them. alt_diff=${g.alt_diff}.`,
+          dive: `Pitch down while still turning toward them.`,
+          break: `Jink only if reverse is not available. they_are_shooting_at_you=${g.they_are_shooting_at_you}.`,
+          extend: `Do not pick this. Pick reverse if they are on your tail, else pursue.`,
+          reverse: `They are chasing you (they_have_guns_on_you=${g.they_have_guns_on_you}). Flip 180, fly backwards, laser them.`,
+        },
+      },
+      fire: {
+        type: "noul",
+        instructions:
+          "Kill the ship in foe with lasers. Fire if lined_up is true or they are at 12 o'clock and range < 220. " +
+          "Hold fire if they are behind you (clock 5–7) or you would hit the sun.",
+        criteria: {
+          true: "Fire lasers.",
+          false: "Hold fire this beat.",
+        },
+      },
+    });
+    const pick = result.answers?.maneuver as JevChoiceAnswer | undefined;
+    const raw = (pick?.choice ?? "").toLowerCase().trim();
+    const maneuvers = ["pursue", "lead", "guns", "climb", "dive", "break", "extend", "reverse"] as const;
+    let maneuver = maneuvers.find((id) => raw === id || raw.includes(id));
+    if (!maneuver && pick?.probabilities) {
+      const top = Object.entries(pick.probabilities).sort((a, b) => (b[1] ?? 0) - (a[1] ?? 0))[0];
+      const key = (top?.[0] ?? "").toLowerCase();
+      maneuver = maneuvers.find((id) => key === id || key.includes(id));
+    }
+    const body: SpacePilotResponse = {
+      maneuver,
+      fire: noul(result.answers?.fire as JevNoulAnswer | undefined),
+      model: result.model,
+    };
+    return Response.json(body, { headers: { "Cache-Control": "no-store" } });
+  } catch (err) {
+    return jsonError(err);
+  }
+}
+
 async function handleDrive(req: Request): Promise<Response> {
   if (!API_KEY) return Response.json({ error: "JEV_API_KEY is not set" }, { status: 500 });
   let state: DriveSnapshot;
@@ -429,6 +492,7 @@ const server = Bun.serve({
     if (req.method === "POST" && route === "/api/invaders") return handleInvaders(req);
     if (req.method === "POST" && route === "/api/worms") return handleWorms(req);
     if (req.method === "POST" && route === "/api/flight") return handleFlight(req);
+    if (req.method === "POST" && route === "/api/space") return handleSpace(req);
     if (req.method === "POST" && route === "/api/drive") return handleDrive(req);
     if (req.method !== "GET" && req.method !== "HEAD") {
       return new Response("Method not allowed", { status: 405 });
