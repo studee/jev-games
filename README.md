@@ -2,6 +2,19 @@
 
 Arcade games piloted by [TypeSafe](https://typesafe.ai) Jev (`jev-latest` via SystemOne). Bun serves the static pages and proxies each game’s `/api/*` calls.
 
+<p>
+  <img src="docs/screenshots/flappy.png" alt="Flappy" width="48%" />
+  <img src="docs/screenshots/pong.png" alt="Pong" width="48%" />
+</p>
+<p>
+  <img src="docs/screenshots/invaders.png" alt="Invaders" width="48%" />
+  <img src="docs/screenshots/worms.png" alt="Worms" width="48%" />
+</p>
+<p>
+  <img src="docs/screenshots/flight.png" alt="Flight" width="48%" />
+  <img src="docs/screenshots/drive.png" alt="Drive" width="48%" />
+</p>
+
 ## Prerequisites
 
 - [Bun](https://bun.sh) 1.1+
