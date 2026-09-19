@@ -1,0 +1,96 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta
+      name="viewport"
+      content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover"
+    />
+    <meta name="theme-color" content="#6ec6ff" />
+    <title>Flight — arcade</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link
+      href="https://fonts.googleapis.com/css2?family=Press+Start+2P&display=swap"
+      rel="stylesheet"
+    />
+    <link rel="stylesheet" href="/styles.css" />
+  </head>
+  <body class="flight">
+    <main class="layout">
+      <div class="shell shell-flight">
+        <canvas id="game" width="1280" height="720" tabindex="0" aria-label="Airplane flight simulator"></canvas>
+        <div class="flight-hud" aria-hidden="true">
+          <div class="flight-readouts">
+            <span><em id="hud-spd">0</em> kts</span>
+            <span><em id="hud-alt">0</em> ft</span>
+            <span><em id="hud-hdg">000</em>°</span>
+            <span><em id="hud-thr">0</em>%</span>
+            <span>you <em id="hud-hp-you">5</em></span>
+            <span>jev <em id="hud-hp-jev">5</em></span>
+            <span>msl <em id="hud-msl">4</em></span>
+            <span>flr <em id="hud-flr">10</em></span>
+            <span><em id="hud-kills">0</em> / <span id="hud-kills-max">0</span> hits</span>
+          </div>
+          <div class="flight-crosshair" id="crosshair" aria-hidden="true"></div>
+          <div class="flight-radar-wrap">
+            <canvas id="radar" width="176" height="176" aria-label="Radar showing Jev"></canvas>
+            <p class="flight-radar-meta"><em id="radar-rng">—</em> rng · <em id="radar-alt">LVL</em></p>
+          </div>
+          <div class="flight-ring"><em id="hud-ring">0</em> / <span id="hud-ring-max">0</span> rings</div>
+        </div>
+        <div id="flight-banner" class="flight-banner">
+          <p class="flight-banner-kicker">You vs Jev</p>
+          <p id="flight-banner-text">Jev is in the red plane. Shoot them down — they will shoot back.</p>
+          <p class="flight-banner-hint">Click the sky for engines, then fly</p>
+        </div>
+      </div>
+      <aside class="feed">
+        <nav class="games">
+          <a href="/">Flappy</a>
+          <a href="/pong.html">Pong</a>
+          <a href="/invaders.html">Invaders</a>
+          <a href="/worms.html">Worms</a>
+          <a href="/draw.html">Draw</a>
+          <a href="/flight.html" aria-current="page">Flight</a>
+          <a href="/drive.html">Drive</a>
+        </nav>
+        <p class="feed-kicker">TypeSafe Jev</p>
+        <h1>Flight</h1>
+        <p class="feed-copy">
+          Jev flies the red plane. Guns are close-in; hold the nose on them
+          until the pipper goes red, then <kbd>F</kbd> for a heat-seeker.
+          They carry missiles too — <kbd>X</kbd> dumps flares to spoof them.
+          Five hits and you're down.
+        </p>
+        <div class="feed-stat">
+          <span id="pilot-action">SCRAMBLE</span>
+          <span id="pilot-meta">waiting for Jev</span>
+        </div>
+        <section class="latency" aria-label="Jev call latency">
+          <div class="latency-head">
+            <p class="feed-kicker">Call latency</p>
+            <div class="latency-stats">
+              <span><em id="lat-last">—</em> last</span>
+              <span><em id="lat-avg">—</em> 8-call avg</span>
+            </div>
+          </div>
+          <canvas id="latency-chart" width="400" height="148"></canvas>
+        </section>
+        <ol id="decisions"></ol>
+        <ul class="flight-keys">
+          <li><kbd>W</kbd><kbd>S</kbd> pitch</li>
+          <li><kbd>A</kbd><kbd>D</kbd> bank</li>
+          <li><kbd>Q</kbd><kbd>E</kbd> yaw</li>
+          <li><kbd>Shift</kbd> turbo</li>
+          <li><kbd>Space</kbd> / click guns</li>
+          <li><kbd>F</kbd> / right-click missile</li>
+          <li><kbd>X</kbd> flares</li>
+          <li><kbd>C</kbd> chase / close cam</li>
+          <li><kbd>R</kbd> restart</li>
+        </ul>
+      </aside>
+    </main>
+    <script src="/flight.js"></script>
+  </body>
+</html>

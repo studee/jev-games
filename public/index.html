@@ -1,0 +1,59 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta
+      name="viewport"
+      content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover"
+    />
+    <meta name="theme-color" content="#4ec0ca" />
+    <title>Flappy Bird — Jev autopilot</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link
+      href="https://fonts.googleapis.com/css2?family=Press+Start+2P&display=swap"
+      rel="stylesheet"
+    />
+    <link rel="stylesheet" href="/styles.css" />
+  </head>
+  <body>
+    <main class="layout">
+      <div class="shell">
+        <canvas id="game" width="420" height="720" aria-label="Flappy Bird game"></canvas>
+      </div>
+      <aside class="feed" aria-live="polite">
+        <nav class="games">
+          <a href="/" aria-current="page">Flappy</a>
+          <a href="/pong.html">Pong</a>
+          <a href="/invaders.html">Invaders</a>
+          <a href="/worms.html">Worms</a>
+          <a href="/draw.html">Draw</a>
+          <a href="/flight.html">Flight</a>
+          <a href="/drive.html">Drive</a>
+        </nav>
+        <p class="feed-kicker">TypeSafe Jev</p>
+        <h1>Watching Jev play</h1>
+        <p class="feed-copy">
+          The bird on the left is live. Each line is one Jev decision about whether
+          to flap, using the current game state — not a screenshot.
+        </p>
+        <div class="feed-stat">
+          <span id="pilot-action">STARTING</span>
+          <span id="pilot-meta">waiting for first call</span>
+        </div>
+        <section class="latency" aria-label="Jev call latency">
+          <div class="latency-head">
+            <p class="feed-kicker">Call latency</p>
+            <div class="latency-stats">
+              <span><em id="lat-last">—</em> last</span>
+              <span><em id="lat-avg">—</em> 8-call avg</span>
+            </div>
+          </div>
+          <canvas id="latency-chart" width="400" height="148"></canvas>
+        </section>
+        <ol id="decisions"></ol>
+      </aside>
+    </main>
+    <script src="/game.js"></script>
+  </body>
+</html>

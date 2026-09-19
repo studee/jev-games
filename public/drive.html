@@ -1,0 +1,91 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta
+      name="viewport"
+      content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover"
+    />
+    <meta name="theme-color" content="#1a1e24" />
+    <title>Drive — Grand Prix</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link
+      href="https://fonts.googleapis.com/css2?family=Press+Start+2P&display=swap"
+      rel="stylesheet"
+    />
+    <link rel="stylesheet" href="/styles.css" />
+  </head>
+  <body class="drive">
+    <main class="layout">
+      <div class="shell shell-drive">
+        <canvas id="game" width="1280" height="720" tabindex="0" aria-label="Formula race"></canvas>
+        <div class="flight-hud" aria-hidden="true">
+          <div class="flight-readouts">
+            <span>P<em id="hud-pos">2</em></span>
+            <span>lap <em id="hud-lap">1</em> / 3</span>
+            <span><em id="hud-spd">0</em> kph</span>
+            <span><em id="hud-rpm">0</em> rpm</span>
+            <span>gear <em id="hud-gear">1</em></span>
+            <span>you <em id="hud-hp-you">5</em></span>
+            <span>jevs <em id="hud-hp-jev">4</em></span>
+          </div>
+          <canvas id="drive-map" class="drive-map" width="148" height="188" aria-label="Track map"></canvas>
+          <div id="jev-bars" class="jev-bars" aria-label="Jev health"></div>
+          <div class="flight-crosshair" aria-hidden="true"></div>
+        </div>
+        <div id="drive-banner" class="flight-banner">
+          <p class="flight-banner-kicker">Stadium GP</p>
+          <p id="drive-banner-text">Packed stands. Engines live. Three laps.</p>
+          <p class="flight-banner-hint">Click the track for sound, then drive</p>
+        </div>
+      </div>
+      <aside class="feed">
+        <nav class="games">
+          <a href="/">Flappy</a>
+          <a href="/pong.html">Pong</a>
+          <a href="/invaders.html">Invaders</a>
+          <a href="/worms.html">Worms</a>
+          <a href="/draw.html">Draw</a>
+          <a href="/flight.html">Flight</a>
+          <a href="/drive.html" aria-current="page">Drive</a>
+        </nav>
+        <p class="feed-kicker">TypeSafe Jev</p>
+        <h1>Drive</h1>
+        <div class="mode-row" role="group" aria-label="Weapons">
+          <a href="/drive.html?guns=1" id="guns-on">Guns</a>
+          <a href="/drive.html" id="guns-off" class="is-active">No guns</a>
+        </div>
+        <p class="feed-copy">
+          Three laps, or last car standing. Guns off unless you open the guns link.
+        </p>
+        <div class="feed-stat">
+          <span id="pilot-action">GRID</span>
+          <span id="pilot-meta">waiting for Jev</span>
+        </div>
+        <section class="latency" aria-label="Jev call latency">
+          <div class="latency-head">
+            <p class="feed-kicker">Call latency</p>
+            <div class="latency-stats">
+              <span><em id="lat-last">—</em> last</span>
+              <span><em id="lat-avg">—</em> 8-call avg</span>
+            </div>
+          </div>
+          <canvas id="latency-chart" width="400" height="148"></canvas>
+        </section>
+        <ol id="decisions"></ol>
+        <ul class="flight-keys">
+          <li><kbd>W</kbd> throttle</li>
+          <li><kbd>S</kbd> brake</li>
+          <li><kbd>A</kbd><kbd>D</kbd> steer</li>
+          <li><kbd>Shift</kbd> oversteer</li>
+          <li id="key-guns"><kbd>Space</kbd> / click guns</li>
+          <li><kbd>G</kbd> guns on/off</li>
+          <li><kbd>C</kbd> next camera</li>
+          <li><kbd>R</kbd> restart</li>
+        </ul>
+      </aside>
+    </main>
+    <script src="/drive.js"></script>
+  </body>
+</html>

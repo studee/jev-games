@@ -1,0 +1,8 @@
+.DS_Store
+.idea
+.vscode
+node_modules
+public/game.js
+public/pong.js
+public/flight.js
+public/drive.js

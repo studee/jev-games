@@ -1,0 +1,666 @@
+*,
+*::before,
+*::after {
+  box-sizing: border-box;
+  margin: 0;
+  padding: 0;
+}
+
+html,
+body {
+  height: 100%;
+  overflow: hidden;
+  background: #14202b;
+  color: #f4f7fb;
+  font-family: "Press Start 2P", ui-monospace, monospace;
+}
+
+body {
+  min-height: 100dvh;
+  touch-action: none;
+  user-select: none;
+  -webkit-user-select: none;
+}
+
+.layout {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 36px;
+  min-height: 100dvh;
+  padding: 24px;
+}
+
+.shell {
+  position: relative;
+  display: grid;
+  place-items: center;
+  width: min(42vw, calc(100dvh * 420 / 720), 420px);
+  height: min(100dvh - 48px, calc(42vw * 720 / 420), 720px);
+  overflow: hidden;
+  border-radius: 18px;
+  box-shadow:
+    0 0 0 4px #0d151c,
+    0 24px 60px rgba(0, 0, 0, 0.45);
+  background: #4ec0ca;
+  flex: 0 0 auto;
+}
+
+.shell canvas {
+  display: block;
+  width: 100%;
+  height: 100%;
+  touch-action: none;
+  cursor: pointer;
+}
+
+.shell canvas.drive-map {
+  width: 124px;
+  height: 158px;
+  touch-action: none;
+  cursor: default;
+}
+
+.latency {
+  margin-bottom: 18px;
+}
+
+.latency-head {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 12px;
+  margin-bottom: 8px;
+}
+
+.latency-head .feed-kicker {
+  margin-bottom: 0;
+}
+
+.latency-stats {
+  display: flex;
+  gap: 14px;
+  font-size: 12px;
+  color: #9db0c0;
+}
+
+.latency-stats em {
+  font-style: normal;
+  font-family: "Press Start 2P", monospace;
+  font-size: 9px;
+  color: #fff4a3;
+  margin-right: 4px;
+}
+
+#latency-chart {
+  display: block;
+  width: 100%;
+  height: 148px;
+}
+
+.feed {
+  width: min(420px, 38vw);
+  max-height: calc(100dvh - 48px);
+  overflow: auto;
+  font-family: ui-sans-serif, system-ui, sans-serif;
+}
+
+.feed-kicker {
+  font-size: 11px;
+  letter-spacing: 0.18em;
+  text-transform: uppercase;
+  color: #8fd0c9;
+  margin-bottom: 10px;
+}
+
+.feed h1 {
+  font-family: "Press Start 2P", monospace;
+  font-size: 18px;
+  line-height: 1.4;
+  margin-bottom: 14px;
+}
+
+.feed-copy {
+  font-size: 15px;
+  line-height: 1.5;
+  color: #c5d0da;
+  margin-bottom: 20px;
+}
+
+.feed-stat {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  padding: 14px 16px;
+  border-radius: 12px;
+  background: #1c2c38;
+  margin-bottom: 18px;
+}
+
+#pilot-action {
+  font-family: "Press Start 2P", monospace;
+  font-size: 16px;
+  color: #fff4a3;
+}
+
+#pilot-meta {
+  font-size: 13px;
+  color: #9db0c0;
+}
+
+#decisions {
+  list-style: none;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+#decisions li {
+  display: flex;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 10px 12px;
+  border-radius: 10px;
+  background: #1c2c38;
+  font-size: 13px;
+}
+
+#decisions li.flap {
+  background: #2a4a28;
+  color: #b6f08a;
+}
+
+#decisions li.wait {
+  color: #c5d0da;
+}
+
+#decisions li.error {
+  background: #4a2424;
+  color: #ffb4b4;
+}
+
+.games {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin-bottom: 16px;
+}
+
+.games a {
+  color: #9db0c0;
+  text-decoration: none;
+  font-size: 12px;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  padding: 6px 10px;
+  border-radius: 8px;
+  background: #1c2c38;
+}
+
+.games a[aria-current="page"] {
+  color: #14202b;
+  background: #fff4a3;
+}
+
+.mode-row {
+  display: flex;
+  gap: 8px;
+  margin-bottom: 16px;
+}
+
+.mode-row a,
+.mode-row button {
+  flex: 1;
+  font: inherit;
+  font-size: 13px;
+  color: #c5d0da;
+  background: #1c2c38;
+  border: 0;
+  border-radius: 8px;
+  padding: 10px 8px;
+  cursor: pointer;
+  text-align: center;
+  text-decoration: none;
+}
+
+.mode-row a.is-active,
+.mode-row button.is-active {
+  color: #14202b;
+  background: #f0c63a;
+}
+
+body.drive-noguns .flight-crosshair {
+  display: none;
+}
+
+.weapon-row {
+  flex-wrap: wrap;
+}
+
+.weapon-row a,
+.weapon-row button {
+  font-size: 11px;
+  padding: 8px 6px;
+}
+
+.level-row {
+  margin-bottom: 16px;
+}
+
+.level-head {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 12px;
+  margin-bottom: 8px;
+  font-size: 12px;
+  color: #9db0c0;
+}
+
+.level-head .feed-kicker {
+  margin-bottom: 0;
+}
+
+.level-head em {
+  font-style: normal;
+  font-family: "Press Start 2P", monospace;
+  font-size: 10px;
+  color: #fff4a3;
+  margin-right: 6px;
+}
+
+#level {
+  width: 100%;
+  accent-color: #f0c63a;
+}
+
+.shell-wide {
+  width: min(72vw, calc((100dvh - 48px) * 800 / 500), 900px);
+  height: min(100dvh - 48px, calc(72vw * 500 / 800), 560px);
+  background: #10202c;
+}
+
+.shell-invaders {
+  width: min(56vw, calc((100dvh - 48px) * 800 / 640), 820px);
+  height: min(100dvh - 48px, calc(56vw * 640 / 800), 656px);
+  background: #05080f;
+}
+
+.shell-worms {
+  width: min(72vw, calc((100dvh - 48px) * 960 / 540), 960px);
+  height: min(100dvh - 48px, calc(72vw * 540 / 960), 540px);
+  background: #4a4cb8;
+}
+
+.shell-draw {
+  width: min(76vw, calc((100dvh - 48px) * 960 / 540), 980px);
+  height: min(100dvh - 48px, calc(76vw * 540 / 960), 540px);
+  background: #12141c;
+}
+
+.shell-flight {
+  width: min(78vw, calc((100dvh - 48px) * 16 / 9), 1100px);
+  height: min(100dvh - 48px, calc(78vw * 9 / 16), 620px);
+  background: #6ec6ff;
+}
+
+.flight-hud {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  display: flex;
+  flex-direction: column;
+  justify-content: space-between;
+  padding: 16px 18px;
+  font-family: ui-sans-serif, system-ui, sans-serif;
+}
+
+.flight-readouts {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  font-size: 12px;
+  letter-spacing: 0.04em;
+  color: rgba(244, 247, 251, 0.92);
+}
+
+.flight-readouts span,
+.flight-ring {
+  padding: 6px 10px;
+  border-radius: 8px;
+  background: rgba(12, 22, 32, 0.42);
+  backdrop-filter: blur(8px);
+}
+
+.flight-readouts em,
+.flight-ring em {
+  font-style: normal;
+  font-variant-numeric: tabular-nums;
+  color: #fff8d6;
+  margin-right: 4px;
+}
+
+.drive-map {
+  position: absolute;
+  right: 14px;
+  top: 52px;
+  width: 124px;
+  height: 158px;
+  border-radius: 10px;
+  background: rgba(12, 22, 32, 0.5);
+  border: 1px solid rgba(255, 248, 214, 0.16);
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.28);
+}
+
+.jev-bars {
+  position: absolute;
+  left: 14px;
+  top: 52px;
+  display: flex;
+  flex-direction: column;
+  gap: 7px;
+  min-width: 128px;
+  pointer-events: none;
+}
+
+.jev-bar {
+  padding: 5px 7px 6px;
+  border-radius: 8px;
+  background: rgba(12, 22, 32, 0.55);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+}
+
+.jev-bar.is-out {
+  opacity: 0.35;
+}
+
+.jev-bar span {
+  display: block;
+  font-size: 10px;
+  letter-spacing: 0.06em;
+  color: rgba(244, 247, 251, 0.88);
+  margin-bottom: 4px;
+}
+
+.jev-bar i {
+  display: block;
+  height: 6px;
+  border-radius: 99px;
+  background: #2a323c;
+  overflow: hidden;
+}
+
+.jev-bar i em {
+  display: block;
+  height: 100%;
+  width: 100%;
+  border-radius: 99px;
+  font-style: normal;
+  transform-origin: left center;
+}
+
+.flight-crosshair {
+  position: absolute;
+  left: 50%;
+  top: 46%;
+  width: 14px;
+  height: 14px;
+  margin: -7px 0 0 -7px;
+  border: 1.5px solid rgba(255, 248, 214, 0.85);
+  border-radius: 50%;
+  box-shadow: 0 0 0 1px rgba(0, 0, 0, 0.25);
+}
+
+.flight-crosshair::before,
+.flight-crosshair::after {
+  content: "";
+  position: absolute;
+  background: rgba(255, 248, 214, 0.9);
+}
+
+.flight-crosshair::before {
+  left: 50%;
+  top: -5px;
+  width: 1.5px;
+  height: 24px;
+  margin-left: -0.75px;
+}
+
+.flight-crosshair::after {
+  top: 50%;
+  left: -5px;
+  height: 1.5px;
+  width: 24px;
+  margin-top: -0.75px;
+}
+
+.flight-crosshair.is-locking {
+  border-color: #ffe27a;
+  box-shadow: 0 0 0 12px rgba(255, 226, 122, 0.12);
+}
+
+.flight-crosshair.is-locked {
+  width: 26px;
+  height: 26px;
+  margin: -13px 0 0 -13px;
+  border-radius: 3px;
+  border-color: #ff4d3a;
+  box-shadow: 0 0 0 1px rgba(0, 0, 0, 0.35), 0 0 16px rgba(255, 70, 40, 0.45);
+  animation: lock-pulse 0.4s ease-in-out infinite alternate;
+}
+
+@keyframes lock-pulse {
+  from {
+    transform: scale(1);
+  }
+  to {
+    transform: scale(1.12);
+  }
+}
+
+.flight-radar-wrap {
+  position: absolute;
+  right: 14px;
+  bottom: 14px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 6px;
+}
+
+#radar {
+  display: block;
+  width: 132px;
+  height: 132px;
+  border-radius: 50%;
+  box-shadow:
+    0 0 0 1px rgba(142, 207, 255, 0.35),
+    inset 0 0 24px rgba(0, 20, 32, 0.55);
+}
+
+.flight-radar-meta {
+  font-size: 11px;
+  letter-spacing: 0.08em;
+  color: rgba(244, 247, 251, 0.88);
+  padding: 3px 8px;
+  border-radius: 6px;
+  background: rgba(12, 22, 32, 0.42);
+  backdrop-filter: blur(8px);
+}
+
+.flight-radar-meta em {
+  font-style: normal;
+  font-variant-numeric: tabular-nums;
+  color: #ff8a7a;
+}
+
+.flight-radar-meta #radar-alt {
+  margin-left: 2px;
+  color: #ffe27a;
+}
+
+.flight-banner {
+  position: absolute;
+  left: 50%;
+  top: 42%;
+  transform: translate(-50%, -50%);
+  text-align: center;
+  pointer-events: none;
+  width: min(90%, 420px);
+}
+
+.flight-banner.is-hidden {
+  display: none;
+}
+
+.flight-banner-kicker {
+  font-size: 11px;
+  letter-spacing: 0.2em;
+  text-transform: uppercase;
+  color: #ffe9a3;
+  margin-bottom: 8px;
+}
+
+#flight-banner-text {
+  font-size: 18px;
+  line-height: 1.4;
+  color: #fff;
+  text-shadow: 0 8px 24px rgba(0, 0, 0, 0.45);
+}
+
+.flight-banner-hint {
+  margin-top: 10px;
+  font-size: 13px;
+  color: #e8f4ff;
+  font-family: ui-sans-serif, system-ui, sans-serif;
+}
+
+.flight-keys {
+  list-style: none;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  font-size: 13px;
+  color: #c5d0da;
+}
+
+.flight-keys li {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.flight-keys kbd {
+  font-family: "Press Start 2P", monospace;
+  font-size: 8px;
+  color: #14202b;
+  background: #fff4a3;
+  border-radius: 4px;
+  padding: 4px 6px;
+}
+
+body.draw {
+  user-select: text;
+  touch-action: manipulation;
+}
+
+body.draw .feed,
+body.worms .feed,
+body.invaders .feed,
+body.pong .feed,
+body.flight .feed,
+body.drive .feed {
+  width: min(380px, 34vw);
+}
+
+.shell-drive {
+  width: min(78vw, calc((100dvh - 48px) * 16 / 9), 1100px);
+  height: min(100dvh - 48px, calc(78vw * 9 / 16), 620px);
+  background: #2c241c;
+}
+
+.draw-field {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  margin-bottom: 12px;
+  font-size: 12px;
+  color: #9db0c0;
+}
+
+.draw-field input[type="file"],
+.draw-field textarea {
+  font: inherit;
+  font-size: 14px;
+  color: #f4f7fb;
+  background: #1c2c38;
+  border: 0;
+  border-radius: 8px;
+  padding: 10px 12px;
+}
+
+.draw-field textarea {
+  resize: vertical;
+  min-height: 72px;
+}
+
+.draw-go {
+  width: 100%;
+  margin-bottom: 16px;
+  font: inherit;
+  font-size: 13px;
+  color: #14202b;
+  background: #f0c63a;
+  border: 0;
+  border-radius: 8px;
+  padding: 12px 8px;
+  cursor: pointer;
+}
+
+.draw-go:disabled {
+  opacity: 0.55;
+  cursor: wait;
+}
+
+@media (max-width: 860px) {
+  body {
+    overflow: auto;
+  }
+
+  .layout {
+    flex-direction: column;
+    align-items: stretch;
+  }
+
+  .shell {
+    width: min(100%, calc((100dvh - 280px) * 420 / 720));
+    height: min(70dvh, calc(100vw * 720 / 420));
+    margin: 0 auto;
+  }
+
+  .shell-wide {
+    width: min(100%, 100vw);
+    height: min(46dvh, calc(100vw * 500 / 800));
+  }
+
+  .shell-invaders {
+    width: min(100%, 100vw);
+    height: min(52dvh, calc(100vw * 640 / 800));
+  }
+
+  .shell-draw {
+    width: min(100%, 100vw);
+    height: min(48dvh, calc(100vw * 540 / 960));
+  }
+
+  .shell-flight,
+  .shell-drive {
+    width: min(100%, 100vw);
+    height: min(50dvh, calc(100vw * 9 / 16));
+  }
+
+  .feed {
+    width: 100%;
+    max-height: none;
+  }
+}
