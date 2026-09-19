@@ -12,6 +12,9 @@ Arcade games piloted by [TypeSafe](https://typesafe.ai) Jev (`jev-latest` via Sy
 </p>
 <p>
   <img src="docs/screenshots/flight.png" alt="Flight" width="48%" />
+  <img src="docs/screenshots/space.png" alt="Space" width="48%" />
+</p>
+<p>
   <img src="docs/screenshots/drive.png" alt="Drive" width="48%" />
 </p>
 
