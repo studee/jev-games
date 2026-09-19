@@ -179,6 +179,21 @@ body {
   color: #ffb4b4;
 }
 
+#decisions li.hunter {
+  background: #4a2424;
+  color: #ffb4b4;
+}
+
+#decisions li.prey {
+  background: #2a4a28;
+  color: #b6f08a;
+}
+
+#decisions li.tag {
+  background: #3a3220;
+  color: #fff4a3;
+}
+
 .games {
   display: flex;
   flex-wrap: wrap;
@@ -288,6 +303,12 @@ body.worms-pvp .latency {
   width: min(56vw, calc((100dvh - 48px) * 800 / 640), 820px);
   height: min(100dvh - 48px, calc(56vw * 640 / 800), 656px);
   background: #05080f;
+}
+
+.shell-survival {
+  width: min(64vw, calc(100dvh - 48px), 720px);
+  height: min(64vw, calc(100dvh - 48px), 720px);
+  background: #101820;
 }
 
 .shell-worms {
@@ -552,7 +573,8 @@ body.worms .feed,
 body.invaders .feed,
 body.pong .feed,
 body.flight .feed,
-body.drive .feed {
+body.drive .feed,
+body.survival .feed {
   width: min(380px, 34vw);
 }
 
@@ -586,6 +608,11 @@ body.drive .feed {
   .shell-invaders {
     width: min(100%, 100vw);
     height: min(52dvh, calc(100vw * 640 / 800));
+  }
+
+  .shell-survival {
+    width: min(100%, 100vw);
+    height: min(56dvh, 100vw);
   }
 
   .shell-flight,

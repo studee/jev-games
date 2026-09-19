@@ -6,8 +6,8 @@
       name="viewport"
       content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover"
     />
-    <meta name="theme-color" content="#4a4cb8" />
-    <title>Worms — Jev arcade</title>
+    <meta name="theme-color" content="#16222c" />
+    <title>Survival — Jev arcade</title>
     <link rel="preconnect" href="https://fonts.googleapis.com" />
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
     <link
@@ -16,42 +16,31 @@
     />
     <link rel="stylesheet" href="/styles.css" />
   </head>
-  <body class="worms">
+  <body class="survival">
     <main class="layout">
-      <div class="shell shell-worms">
-        <canvas id="game" width="960" height="540" aria-label="Worms game"></canvas>
+      <div class="shell shell-survival">
+        <canvas id="game" width="720" height="720" aria-label="Survival tag"></canvas>
       </div>
       <aside class="feed" aria-live="polite">
         <nav class="games">
           <a href="/">Flappy</a>
           <a href="/pong.html">Pong</a>
           <a href="/invaders.html">Invaders</a>
-          <a href="/worms.html" aria-current="page">Worms</a>
+          <a href="/worms.html">Worms</a>
           <a href="/flight.html">Flight</a>
           <a href="/space.html">Space</a>
           <a href="/drive.html">Drive</a>
-          <a href="/survival.html">Survival</a>
+          <a href="/survival.html" aria-current="page">Survival</a>
         </nav>
         <p class="feed-kicker">TypeSafe Jev</p>
-        <h1>Worms</h1>
+        <h1>Survival</h1>
         <p class="feed-copy">
-          1–4 pick a weapon. Cluster splits mid-air, mortar is heavy artillery,
-          ← → or A D walk, ↑ ↓ aim, hold space to fire. You vs You is hot-seat:
-          same keys, take turns.
+          One red, nine green. Red tags turn greens red. You start red (gold ring).
+          Everyone else is a Jev. WASD or arrows, or drag.
         </p>
-        <div class="mode-row">
-          <a href="/worms.html?mode=you-vs-jev" class="is-active" data-mode="you-vs-jev">You vs Jev</a>
-          <a href="/worms.html?mode=you-vs-you" data-mode="you-vs-you">You vs You</a>
-          <a href="/worms.html?mode=jev-vs-jev" data-mode="jev-vs-jev">Jev vs Jev</a>
-        </div>
-        <div class="mode-row weapon-row">
-          <a href="/worms.html?weapon=bazooka" class="is-active" data-weapon="bazooka">1 Bazooka</a>
-          <a href="/worms.html?weapon=cluster" data-weapon="cluster">2 Cluster</a>
-          <a href="/worms.html?weapon=mortar" data-weapon="mortar">3 Mortar</a>
-        </div>
         <div class="feed-stat">
-          <span id="pilot-action">YOU vs JEV</span>
-          <span id="pilot-meta">← → aim ↑ ↓ · hold space</span>
+          <span id="pilot-action">HUNT</span>
+          <span id="pilot-meta">← → ↑ ↓ · space rematch</span>
         </div>
         <section class="latency" aria-label="Jev call latency">
           <div class="latency-head">
@@ -66,6 +55,6 @@
         <ol id="decisions"></ol>
       </aside>
     </main>
-    <script src="/worms.js"></script>
+    <script src="/survival.js"></script>
   </body>
 </html>

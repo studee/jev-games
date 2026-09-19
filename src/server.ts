@@ -6,6 +6,8 @@ import type {
   FlightSnapshot,
   SpacePilotResponse,
   SpaceSnapshot,
+  SurvivalPilotResponse,
+  SurvivalSnapshot,
   GameSnapshot,
   InvadersPilotResponse,
   InvadersSnapshot,
@@ -474,6 +476,56 @@ async function handleDrive(req: Request): Promise<Response> {
   }
 }
 
+async function handleSurvival(req: Request): Promise<Response> {
+  if (!API_KEY) return Response.json({ error: "JEV_API_KEY is not set" }, { status: 500 });
+  let state: SurvivalSnapshot;
+  try {
+    state = (await req.json()) as SurvivalSnapshot;
+  } catch {
+    return Response.json({ error: "invalid json" }, { status: 400 });
+  }
+  try {
+    const hunter = state.you.role === "hunter";
+    const focus = state.focus;
+    const result = await systemOne(state, {
+      heading: {
+        type: "noul",
+        instructions:
+          (hunter
+            ? "You are RED. Hunt the GREEN in focus only — that is your assignment. " +
+              "Other reds have different greens. Do not all chase the same one. " +
+              "If focus is missing, steer toward cover to hold a different slice of the arena. " +
+              "Stay away from other reds so you cover more ground."
+            : "You are GREEN. Do not get tagged. Run away from the nearest RED. " +
+              "Also stay far from other greens — do not clump. " +
+              "If nearest_green is close, steer away from them unless a red is closer. " +
+              "If edge_dist is small, cut inward, not into the wall.") +
+          " heading 0 is right, 0.25 is down, 0.5 is left, 0.75 is up (screen y grows downward). " +
+          (focus
+            ? `Focus ${focus.role} id ${focus.id} is ${focus.dist} away at ${focus.bearing_deg}°. `
+            : hunter
+              ? `No assigned prey. Cover is (${state.cover?.x ?? 0},${state.cover?.y ?? 0}). `
+              : "No focus. Stay inside the circle. ") +
+          (state.nearest_green
+            ? `Nearest other green is ${state.nearest_green.dist} away at ${state.nearest_green.bearing_deg}°. `
+            : "") +
+          `edge_dist=${state.you.edge_dist}. greens_left=${state.greens_left}.`,
+        criteria: {
+          true: "Aim downward / clockwise from right (toward 0.5–1).",
+          false: "Aim upward / counterclockwise from right (toward 0–0.25).",
+        },
+      },
+    });
+    const body: SurvivalPilotResponse = {
+      heading: noul(result.answers?.heading as JevNoulAnswer | undefined),
+      model: result.model,
+    };
+    return Response.json(body, { headers: { "Cache-Control": "no-store" } });
+  } catch (err) {
+    return jsonError(err);
+  }
+}
+
 function publicFile(pathname: string): string | null {
   const relative = pathname === "/" ? "index.html" : pathname.replace(/^\/+/, "");
   const full = normalize(join(PUBLIC_DIR, relative));
@@ -494,6 +546,7 @@ const server = Bun.serve({
     if (req.method === "POST" && route === "/api/flight") return handleFlight(req);
     if (req.method === "POST" && route === "/api/space") return handleSpace(req);
     if (req.method === "POST" && route === "/api/drive") return handleDrive(req);
+    if (req.method === "POST" && route === "/api/survival") return handleSurvival(req);
     if (req.method !== "GET" && req.method !== "HEAD") {
       return new Response("Method not allowed", { status: 405 });
     }

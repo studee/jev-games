@@ -229,4 +229,41 @@ export type SpaceManeuver = FlightManeuver;
 export type SpaceSnapshot = FlightSnapshot;
 export type SpacePilotResponse = FlightPilotResponse;
 
+export type SurvivalRole = "hunter" | "prey";
+
+export type SurvivalPeer = {
+  id: number;
+  role: SurvivalRole;
+  x: number;
+  y: number;
+  dist: number;
+  bearing_deg: number;
+};
+
+export type SurvivalSnapshot = {
+  rules: string;
+  you: {
+    id: number;
+    name: string;
+    role: SurvivalRole;
+    x: number;
+    y: number;
+    heading_deg: number;
+    edge_dist: number;
+  };
+  greens_left: number;
+  reds: number;
+  focus: SurvivalPeer | null;
+  nearest_green: SurvivalPeer | null;
+  cover: { x: number; y: number } | null;
+  others: SurvivalPeer[];
+};
+
+export type SurvivalPilotResponse = {
+  heading?: number;
+  model?: string;
+  error?: string;
+  detail?: string;
+};
+
 
