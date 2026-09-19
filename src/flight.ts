@@ -14,13 +14,13 @@ const hudKills = document.querySelector("#hud-kills")!;
 const hudKillsMax = document.querySelector("#hud-kills-max")!;
 const hudHpYou = document.querySelector("#hud-hp-you")!;
 const hudHpJev = document.querySelector("#hud-hp-jev")!;
-const hudMsl = document.querySelector("#hud-msl")!;
-const hudFlr = document.querySelector("#hud-flr")!;
 const crosshair = document.querySelector("#crosshair")!;
 const radarCanvas = document.querySelector<HTMLCanvasElement>("#radar")!;
 const radarRng = document.querySelector("#radar-rng")!;
 const radarAlt = document.querySelector("#radar-alt")!;
 const radarCtx = radarCanvas.getContext("2d")!;
+const huntCanvas = document.querySelector<HTMLCanvasElement>("#hunt-arrows")!;
+const huntCtx = huntCanvas.getContext("2d")!;
 const RADAR_MIN = 260;
 const RADAR_MAX = 2200;
 const feedList = document.querySelector("#decisions");
@@ -121,10 +121,10 @@ function makeCloudSprite(): THREE.CanvasTexture {
   return tex;
 }
 
-function makeAirplane(env: THREE.Texture, skin: "gold" | "red" = "gold"): THREE.Group {
+function makeAirplane(env: THREE.Texture, paintHex: number, gold = false, shadows = false): THREE.Group {
   const plane = new THREE.Group();
   const paint = new THREE.MeshPhysicalMaterial({
-    color: skin === "gold" ? 0xe7c14a : 0x8f2222,
+    color: paintHex,
     metalness: 0.35,
     roughness: 0.28,
     clearcoat: 0.65,
@@ -133,29 +133,27 @@ function makeAirplane(env: THREE.Texture, skin: "gold" | "red" = "gold"): THREE.
     envMapIntensity: 0.45,
   });
   const white = new THREE.MeshPhysicalMaterial({
-    color: skin === "gold" ? 0xf4f1ea : 0x2a3038,
+    color: gold ? 0xf4f1ea : 0x2a3038,
     metalness: 0.25,
     roughness: 0.32,
     envMap: env,
     envMapIntensity: 0.35,
   });
   const stripe = new THREE.MeshPhysicalMaterial({
-    color: skin === "gold" ? 0xb42318 : 0xf0c63a,
+    color: gold ? 0xb42318 : 0xf0c63a,
     metalness: 0.4,
     roughness: 0.3,
     envMap: env,
   });
   const dark = new THREE.MeshStandardMaterial({ color: 0x1a1f24, metalness: 0.7, roughness: 0.35, envMap: env });
-  const glass = new THREE.MeshPhysicalMaterial({
+  const glass = new THREE.MeshStandardMaterial({
     color: 0x8ecfff,
-    metalness: 0.1,
-    roughness: 0.05,
-    transmission: 0.55,
-    thickness: 0.4,
+    metalness: 0.35,
+    roughness: 0.12,
     transparent: true,
-    opacity: 0.75,
+    opacity: 0.55,
     envMap: env,
-    envMapIntensity: 0.6,
+    envMapIntensity: 0.55,
   });
 
   const fuse = new THREE.Mesh(new THREE.CapsuleGeometry(0.48, 3.6, 8, 20), paint);
@@ -243,12 +241,11 @@ function makeAirplane(env: THREE.Texture, skin: "gold" | "red" = "gold"): THREE.
   prop.position.set(0, 0.12, -2.82);
   plane.add(prop);
 
-  plane.traverse((obj: THREE.Object3D) => {
-    if (obj instanceof THREE.Mesh) {
-      obj.castShadow = true;
-      obj.receiveShadow = true;
-    }
-  });
+  if (shadows) {
+    plane.traverse((obj: THREE.Object3D) => {
+      if (obj instanceof THREE.Mesh) obj.castShadow = true;
+    });
+  }
   return plane;
 }
 
@@ -308,8 +305,8 @@ function makeTrees(scene: THREE.Scene): void {
   }
   const trunks = new THREE.InstancedMesh(trunkGeo, trunkMat, spots.length);
   const leaves = new THREE.InstancedMesh(leafGeo, leafMat, spots.length);
-  trunks.castShadow = leaves.castShadow = true;
-  trunks.receiveShadow = leaves.receiveShadow = true;
+  trunks.castShadow = leaves.castShadow = false;
+  trunks.receiveShadow = leaves.receiveShadow = false;
   const dummy = new THREE.Object3D();
   spots.forEach((s, i) => {
     dummy.position.set(s[0], s[1] + 1.2 * s[3], s[2]);
@@ -576,52 +573,6 @@ function playBoom(audio: PlaneAudio): void {
   osc.stop(ctx.currentTime + 0.42);
 }
 
-function playMissile(audio: PlaneAudio): void {
-  const { ctx, master } = audio;
-  burstNoise(ctx, master, 0.35, 0.7, 180, 2400);
-  const osc = ctx.createOscillator();
-  const g = ctx.createGain();
-  osc.type = "sawtooth";
-  osc.frequency.setValueAtTime(420, ctx.currentTime);
-  osc.frequency.exponentialRampToValueAtTime(90, ctx.currentTime + 0.32);
-  g.gain.setValueAtTime(0.16, ctx.currentTime);
-  g.gain.exponentialRampToValueAtTime(0.0001, ctx.currentTime + 0.34);
-  osc.connect(g);
-  g.connect(master);
-  osc.start();
-  osc.stop(ctx.currentTime + 0.36);
-}
-
-function playLockTone(audio: PlaneAudio, locked: boolean): void {
-  const { ctx, master } = audio;
-  const osc = ctx.createOscillator();
-  const g = ctx.createGain();
-  osc.type = "square";
-  osc.frequency.value = locked ? 1480 : 760;
-  g.gain.setValueAtTime(0.07, ctx.currentTime);
-  g.gain.exponentialRampToValueAtTime(0.0001, ctx.currentTime + (locked ? 0.08 : 0.12));
-  osc.connect(g);
-  g.connect(master);
-  osc.start();
-  osc.stop(ctx.currentTime + 0.14);
-}
-
-function playFlare(audio: PlaneAudio): void {
-  const { ctx, master } = audio;
-  burstNoise(ctx, master, 0.28, 0.42, 900, 6500);
-  const osc = ctx.createOscillator();
-  const g = ctx.createGain();
-  osc.type = "sawtooth";
-  osc.frequency.setValueAtTime(2400, ctx.currentTime);
-  osc.frequency.exponentialRampToValueAtTime(420, ctx.currentTime + 0.22);
-  g.gain.setValueAtTime(0.08, ctx.currentTime);
-  g.gain.exponentialRampToValueAtTime(0.0001, ctx.currentTime + 0.24);
-  osc.connect(g);
-  g.connect(master);
-  osc.start();
-  osc.stop(ctx.currentTime + 0.26);
-}
-
 const keys = new Set<string>();
 window.addEventListener("keydown", (e) => {
   keys.add(e.code);
@@ -629,10 +580,10 @@ window.addEventListener("keydown", (e) => {
 });
 window.addEventListener("keyup", (e) => keys.delete(e.code));
 
-const renderer = new THREE.WebGLRenderer({ canvas, antialias: true });
-renderer.setPixelRatio(Math.min(devicePixelRatio, 2));
+const renderer = new THREE.WebGLRenderer({ canvas, antialias: true, powerPreference: "high-performance" });
+renderer.setPixelRatio(Math.min(devicePixelRatio, 1.5));
 renderer.shadowMap.enabled = true;
-renderer.shadowMap.type = THREE.PCFSoftShadowMap;
+renderer.shadowMap.type = THREE.PCFShadowMap;
 renderer.toneMapping = THREE.ACESFilmicToneMapping;
 renderer.toneMappingExposure = 0.72;
 renderer.outputColorSpace = THREE.SRGBColorSpace;
@@ -676,7 +627,7 @@ scene.add(new THREE.HemisphereLight(0xb9d7f2, 0x3e5a38, 0.62));
 const sun = new THREE.DirectionalLight(0xfff1c2, 1.35);
 sun.position.copy(sunSpherical).multiplyScalar(800);
 sun.castShadow = true;
-sun.shadow.mapSize.set(2048, 2048);
+sun.shadow.mapSize.set(1024, 1024);
 sun.shadow.camera.near = 10;
 sun.shadow.camera.far = 1400;
 sun.shadow.camera.left = -180;
@@ -739,39 +690,184 @@ marks.rotation.x = -Math.PI / 2;
 marks.position.set(0, 1.26, -70);
 scene.add(marks);
 
-const plane = makeAirplane(envMap, "gold");
+const plane = makeAirplane(envMap, 0xe7c14a, true, true);
 plane.matrixAutoUpdate = false;
 scene.add(plane);
 const prop = plane.getObjectByName("prop")!;
 const propDisc = plane.getObjectByName("prop-disc") as THREE.Mesh;
 
-const foeMesh = makeAirplane(envMap, "red");
-foeMesh.matrixAutoUpdate = false;
-scene.add(foeMesh);
-const foeProp = foeMesh.getObjectByName("prop")!;
-const foePropDisc = foeMesh.getObjectByName("prop-disc") as THREE.Mesh;
-const foePos = new THREE.Vector3();
-const foeX = new THREE.Vector3();
-const foeY = new THREE.Vector3();
-const foeZ = new THREE.Vector3();
-const foeRot = new THREE.Matrix4();
-const foeMat = new THREE.Matrix4();
-const foeFwd = new THREE.Vector3();
+function makeHpBar(paint: number): { bar: THREE.Group; barFill: THREE.Mesh } {
+  const bar = new THREE.Group();
+  const bg = new THREE.Mesh(
+    new THREE.PlaneGeometry(1.55, 0.16),
+    new THREE.MeshBasicMaterial({ color: 0x111318, depthTest: true, transparent: true, opacity: 0.72 }),
+  );
+  const barFill = new THREE.Mesh(
+    new THREE.PlaneGeometry(1.45, 0.1),
+    new THREE.MeshBasicMaterial({ color: paint, depthTest: true }),
+  );
+  barFill.position.z = 0.01;
+  const rim = new THREE.Mesh(
+    new THREE.PlaneGeometry(1.57, 0.18),
+    new THREE.MeshBasicMaterial({ color: 0xf4f4f0, depthTest: true, transparent: true, opacity: 0.4 }),
+  );
+  rim.position.z = -0.01;
+  bar.add(rim, bg, barFill);
+  bar.scale.setScalar(5);
+  bar.renderOrder = 20;
+  scene.add(bar);
+  return { bar, barFill };
+}
+
+type Fighter = {
+  id: number;
+  name: string;
+  color: number;
+  mesh: THREE.Group;
+  prop: THREE.Object3D;
+  propDisc: THREE.Mesh;
+  pos: THREE.Vector3;
+  axisX: THREE.Vector3;
+  axisY: THREE.Vector3;
+  axisZ: THREE.Vector3;
+  rot: THREE.Matrix4;
+  mat: THREE.Matrix4;
+  fwd: THREE.Vector3;
+  yaw: number;
+  pitch: number;
+  stickBank: number;
+  stickPitch: number;
+  turbo: number;
+  speed: number;
+  hp: number;
+  alive: boolean;
+  fireCool: number;
+  gunSide: number;
+  invuln: number;
+  maneuver: FlightManeuver;
+  wantFire: boolean;
+  askAt: number;
+  breakDir: number;
+  spawn: THREE.Vector3;
+  lastShot: number;
+  backFlight: boolean;
+  revUntil: number;
+  bar: THREE.Group;
+  barFill: THREE.Mesh;
+};
+
+const FOE_SKINS = [
+  { name: "JEV-1", paint: 0xb5121b, spawn: [48, 36, -70] as const },
+  { name: "JEV-2", paint: 0x1e4fa3, spawn: [-52, 34, -90] as const },
+  { name: "JEV-3", paint: 0xd45a12, spawn: [90, 40, -40] as const },
+];
+
+function makeFighter(id: number, spec: (typeof FOE_SKINS)[number]): Fighter {
+  const mesh = makeAirplane(envMap, spec.paint, false);
+  mesh.matrixAutoUpdate = false;
+  scene.add(mesh);
+  const hp = makeHpBar(spec.paint);
+  return {
+    id,
+    name: spec.name,
+    color: spec.paint,
+    mesh,
+    prop: mesh.getObjectByName("prop")!,
+    propDisc: mesh.getObjectByName("prop-disc") as THREE.Mesh,
+    pos: new THREE.Vector3(...spec.spawn),
+    axisX: new THREE.Vector3(-1, 0, 0),
+    axisY: new THREE.Vector3(0, 1, 0),
+    axisZ: new THREE.Vector3(0, 0, -1),
+    rot: new THREE.Matrix4(),
+    mat: new THREE.Matrix4(),
+    fwd: new THREE.Vector3(),
+    yaw: 0,
+    pitch: 0,
+    stickBank: 0,
+    stickPitch: 0,
+    turbo: 0.2,
+    speed: 0,
+    hp: 5,
+    alive: true,
+    fireCool: 0,
+    gunSide: 0,
+    invuln: 0,
+    maneuver: "pursue",
+    wantFire: false,
+    askAt: performance.now() + 320 + id * 170,
+    breakDir: Math.random() < 0.5 ? 1 : -1,
+    spawn: new THREE.Vector3(...spec.spawn),
+    lastShot: -9999,
+    backFlight: false,
+    revUntil: 0,
+    bar: hp.bar,
+    barFill: hp.barFill,
+  };
+}
+
+const foes = FOE_SKINS.map((s, i) => makeFighter(i, s));
 const aimPoint = new THREE.Vector3();
 const toVec = new THREE.Vector3();
-let foeYaw = 0;
-let foePitch = 0;
-let foeTurbo = 0;
-let foeSpeed = 0;
-let foeHp = 5;
-let foeAlive = true;
-let foeFireCool = 0;
-let foeGunSide = 0;
-let foeInvuln = 0;
+const huntNdc = new THREE.Vector3();
+const huntCamFwd = new THREE.Vector3();
+const huntCamPos = new THREE.Vector3();
 let playerHp = 5;
 let playerInvuln = 0;
+let specI = 0;
 const MAX_HP = 5;
-const HIT_R = 5.6;
+const youHp = makeHpBar(0xe7c14a);
+
+const jevBarsRoot = document.querySelector("#jev-bars");
+function addHpRow(name: string, color: number): { row: HTMLDivElement; fill: HTMLElement } {
+  const row = document.createElement("div");
+  row.className = "jev-bar";
+  const label = document.createElement("span");
+  label.textContent = name;
+  const track = document.createElement("i");
+  const fill = document.createElement("em");
+  fill.style.background = `#${color.toString(16).padStart(6, "0")}`;
+  track.append(fill);
+  row.append(label, track);
+  jevBarsRoot?.append(row);
+  return { row, fill };
+}
+const youBarUi = addHpRow("YOU", 0xe7c14a);
+const jevBarUi = foes.map((f) => addHpRow(f.name, f.color));
+
+function placeHpBar(
+  bar: THREE.Group,
+  fill: THREE.Mesh,
+  pos: THREE.Vector3,
+  up: THREE.Vector3,
+  hp: number,
+  color: number,
+  show: boolean,
+): void {
+  const t = THREE.MathUtils.clamp(hp / MAX_HP, 0, 1);
+  bar.visible = show && hp > 0;
+  if (!bar.visible) return;
+  bar.position.copy(pos).addScaledVector(up, 12.5);
+  bar.quaternion.copy(hpBillboardQuat);
+  fill.scale.x = Math.max(0.02, t);
+  fill.position.x = -0.725 * (1 - t);
+  (fill.material as THREE.MeshBasicMaterial).color.setHex(t > 0.4 ? color : 0xff3b30);
+}
+
+function syncHpUi(): void {
+  const youT = THREE.MathUtils.clamp(playerHp / MAX_HP, 0, 1);
+  youBarUi.fill.style.transform = `scaleX(${youT})`;
+  youBarUi.row.classList.toggle("is-out", playerHp <= 0);
+  for (let i = 0; i < foes.length; i++) {
+    const f = foes[i]!;
+    const ui = jevBarUi[i]!;
+    const t = THREE.MathUtils.clamp(f.hp / MAX_HP, 0, 1);
+    ui.fill.style.transform = `scaleX(${t})`;
+    ui.row.classList.toggle("is-out", !f.alive || f.hp <= 0);
+  }
+}
+const HIT_R = 20.4;
+const PLANE_SCALE = 3.7;
+const planeScaleMat = new THREE.Matrix4().makeScale(PLANE_SCALE, PLANE_SCALE, PLANE_SCALE);
 const FIGHT_AGL_MIN = 16;
 const FIGHT_AGL_PREF = 30;
 const FIGHT_AGL_MAX = 48;
@@ -794,7 +890,7 @@ type Bullet = {
   vel: THREE.Vector3;
   alive: boolean;
   life: number;
-  owner: "you" | "jev";
+  owner: "you" | number;
 };
 
 type Blast = {
@@ -820,136 +916,6 @@ for (let i = 0; i < 80; i++) {
   bullets.push({ mesh, vel: new THREE.Vector3(), alive: false, life: 0, owner: "you" });
 }
 
-type Flare = {
-  mesh: THREE.Mesh;
-  vel: THREE.Vector3;
-  alive: boolean;
-  life: number;
-  heat: number;
-  owner: "you" | "jev";
-};
-
-type Missile = {
-  group: THREE.Group;
-  vel: THREE.Vector3;
-  alive: boolean;
-  life: number;
-  owner: "you" | "jev";
-  seek: "foe" | "you" | "balloon" | "flare";
-  balloon: Target | null;
-  flare: Flare | null;
-  trail: THREE.Line;
-  trailPos: Float32Array;
-};
-
-const MSL_AMMO = 4;
-const MSL_SPEED = 305;
-const MSL_TURN = 3.15;
-const MSL_LIFE = 5.6;
-const MSL_HIT = 8.2;
-const TRAIL_N = 22;
-const missileDir = new THREE.Vector3();
-const missileLook = new THREE.Vector3();
-
-function makeMissileVisual(color: number): THREE.Group {
-  const group = new THREE.Group();
-  const body = new THREE.Mesh(
-    new THREE.CylinderGeometry(0.16, 0.2, 2.6, 8),
-    new THREE.MeshStandardMaterial({ color, metalness: 0.55, roughness: 0.32 }),
-  );
-  body.rotation.x = Math.PI / 2;
-  const nose = new THREE.Mesh(
-    new THREE.ConeGeometry(0.16, 0.62, 8),
-    new THREE.MeshStandardMaterial({ color: 0xf4f0ea, metalness: 0.4, roughness: 0.35 }),
-  );
-  nose.rotation.x = -Math.PI / 2;
-  nose.position.z = -1.55;
-  const exhaust = new THREE.Mesh(
-    new THREE.ConeGeometry(0.14, 0.7, 8),
-    new THREE.MeshBasicMaterial({ color: 0xffc266 }),
-  );
-  exhaust.rotation.x = Math.PI / 2;
-  exhaust.position.z = 1.55;
-  for (const x of [-0.28, 0.28]) {
-    const fin = new THREE.Mesh(
-      new THREE.BoxGeometry(0.42, 0.04, 0.38),
-      new THREE.MeshStandardMaterial({ color, metalness: 0.4, roughness: 0.45 }),
-    );
-    fin.position.set(x, 0, 0.85);
-    group.add(fin);
-  }
-  const light = new THREE.PointLight(color === 0xc45a3a ? 0xff5533 : 0xffcc66, 3.2, 16);
-  light.position.z = 1.6;
-  group.add(body, nose, exhaust, light);
-  return group;
-}
-
-const missiles: Missile[] = [];
-for (let i = 0; i < 12; i++) {
-  const group = makeMissileVisual(i % 2 ? 0xc45a3a : 0xd8c27a);
-  group.visible = false;
-  scene.add(group);
-  const trailPos = new Float32Array(TRAIL_N * 3);
-  const trailGeo = new THREE.BufferGeometry();
-  trailGeo.setAttribute("position", new THREE.BufferAttribute(trailPos, 3));
-  const trail = new THREE.Line(
-    trailGeo,
-    new THREE.LineBasicMaterial({ color: 0xffb35a, transparent: true, opacity: 0.7 }),
-  );
-  trail.visible = false;
-  scene.add(trail);
-  missiles.push({
-    group,
-    vel: new THREE.Vector3(),
-    alive: false,
-    life: 0,
-    owner: "you",
-    seek: "foe",
-    balloon: null,
-    flare: null,
-    trail,
-    trailPos,
-  });
-}
-
-let playerMsl = MSL_AMMO;
-let foeMsl = MSL_AMMO;
-let foeMissileCool = 0;
-let lockT = 0;
-let lastLockBeep = 0;
-const LOCK_NEED = 0.38;
-const FLARE_AMMO = 10;
-const FLARE_LIFE = 3.4;
-const FLARE_HIT = 6.4;
-const flareOff = new THREE.Vector3();
-const flareSeek = new THREE.Vector3();
-const flareGeo = new THREE.SphereGeometry(0.42, 7, 5);
-const flareMat = new THREE.MeshBasicMaterial({
-  color: 0xffd27a,
-  transparent: true,
-  opacity: 0.92,
-  blending: THREE.AdditiveBlending,
-  depthWrite: false,
-});
-const flares: Flare[] = [];
-for (let i = 0; i < 16; i++) {
-  const mesh = new THREE.Mesh(flareGeo, flareMat);
-  mesh.visible = false;
-  mesh.frustumCulled = true;
-  scene.add(mesh);
-  flares.push({
-    mesh,
-    vel: new THREE.Vector3(),
-    alive: false,
-    life: 0,
-    heat: 0,
-    owner: "you",
-  });
-}
-let playerFlares = FLARE_AMMO;
-let foeFlares = FLARE_AMMO;
-let flareCool = 0;
-let foeFlareCool = 0;
 
 const balloonGeo = new THREE.SphereGeometry(3.4, 18, 14);
 const basketGeo = new THREE.BoxGeometry(1.4, 1.1, 1.4);
@@ -1079,7 +1045,7 @@ function sight(from: THREE.Vector3, fwd: THREE.Vector3, right: THREE.Vector3, up
 }
 
 function fireFrom(
-  owner: "you" | "jev",
+  owner: "you" | number,
   matrix: THREE.Matrix4,
   fwd: THREE.Vector3,
   rot: THREE.Matrix4,
@@ -1098,201 +1064,14 @@ function fireFrom(
   slot.life = 1.6;
   slot.owner = owner;
   if (owner === "you") lastPlayerShot = performance.now();
-  if (audio) playGun(audio);
+  else foes[owner]!.lastShot = performance.now();
+  if (audio && owner === "you") playGun(audio);
   return 1 - side;
 }
 
 function fireGun(): void {
   if (crashed) return;
   gunSide = fireFrom("you", plane.matrix, forward, rotMatrix, gunSide);
-}
-
-function missileOn(who: "you" | "jev"): boolean {
-  for (const m of missiles) {
-    if (!m.alive) continue;
-    if (who === "jev" && m.owner === "you" && m.seek === "foe") return true;
-    if (who === "you" && m.owner === "jev") return true;
-  }
-  return false;
-}
-
-function lockCandidate(): { seek: "foe" | "balloon"; balloon: Target | null } | null {
-  if (foeAlive) {
-    const s = sight(planePosition, forward, axisX, axisY, foePos);
-    if (s.along > 0.42 && s.range < 680 && Math.abs(s.bearing) < 0.48 && Math.abs(s.elevation) < 0.4) {
-      return { seek: "foe", balloon: null };
-    }
-  }
-  let best: Target | null = null;
-  let bestRange = 380;
-  for (const t of targets) {
-    if (!t.alive) continue;
-    const s = sight(planePosition, forward, axisX, axisY, t.pos);
-    if (s.along > 0.58 && Math.abs(s.bearing) < 0.26 && Math.abs(s.elevation) < 0.22 && s.range < bestRange) {
-      best = t;
-      bestRange = s.range;
-    }
-  }
-  if (best) return { seek: "balloon", balloon: best };
-  return null;
-}
-
-function fireMissile(owner: "you" | "jev"): void {
-  if (crashed && owner === "you") return;
-  if (owner === "you") {
-    if (playerMsl <= 0 || lockT < 1) return;
-  } else if (foeMsl <= 0 || !foeAlive) return;
-  const slot = missiles.find((m) => !m.alive);
-  if (!slot) return;
-  const matrix = owner === "you" ? plane.matrix : foeMesh.matrix;
-  const fwd = owner === "you" ? forward : foeFwd;
-  gunWorld.set(0, -0.35, -3.1);
-  gunWorld.applyMatrix4(matrix);
-  slot.group.position.copy(gunWorld);
-  slot.vel.copy(fwd).multiplyScalar(MSL_SPEED);
-  slot.alive = true;
-  slot.life = MSL_LIFE;
-  slot.owner = owner;
-  slot.group.visible = true;
-  slot.trail.visible = true;
-  if (owner === "you") {
-    const lock = lockCandidate();
-    if (!lock) {
-      slot.alive = false;
-      slot.group.visible = false;
-      slot.trail.visible = false;
-      return;
-    }
-    slot.seek = lock.seek;
-    slot.balloon = lock.balloon;
-    slot.flare = null;
-    playerMsl -= 1;
-    lockT = 0.35;
-  } else {
-    slot.seek = "you";
-    slot.balloon = null;
-    slot.flare = null;
-    foeMsl -= 1;
-  }
-  const pos = slot.trailPos;
-  for (let i = 0; i < TRAIL_N; i++) {
-    pos[i * 3] = gunWorld.x;
-    pos[i * 3 + 1] = gunWorld.y;
-    pos[i * 3 + 2] = gunWorld.z;
-  }
-  (slot.trail.geometry as THREE.BufferGeometry).attributes.position.needsUpdate = true;
-  if (audio) playMissile(audio);
-}
-
-function killMissile(m: Missile): void {
-  m.alive = false;
-  m.group.visible = false;
-  m.trail.visible = false;
-  m.balloon = null;
-  m.flare = null;
-}
-
-function killFlare(f: Flare): void {
-  f.alive = false;
-  f.mesh.visible = false;
-  f.heat = 0;
-}
-
-function hottestFlare(m: Missile, victim: "you" | "jev"): Flare | null {
-  let best: Flare | null = null;
-  let bestScore = 0;
-  const speed = m.vel.length();
-  for (const f of flares) {
-    if (!f.alive || f.owner !== victim || f.heat < 0.08) continue;
-    flareSeek.copy(f.mesh.position).sub(m.group.position);
-    const d = flareSeek.length();
-    if (d < 0.05) continue;
-    flareSeek.multiplyScalar(1 / d);
-    const closing = speed > 0.5 ? m.vel.dot(flareSeek) / speed : 1;
-    if (closing < -0.2 && d > 28) continue;
-    const score = (f.heat * (0.55 + Math.max(0, closing))) / (6 + d * 0.12);
-    if (score > bestScore) {
-      best = f;
-      bestScore = score;
-    }
-  }
-  return best;
-}
-
-function missileTarget(m: Missile): THREE.Vector3 | null {
-  if (m.owner === "jev" || m.seek === "you" || (m.seek === "flare" && m.flare?.owner === "you")) {
-    const decoy = hottestFlare(m, "you");
-    const close = m.group.position.distanceTo(planePosition) < 20;
-    if (decoy && !close) {
-      m.seek = "flare";
-      m.flare = decoy;
-      return decoy.mesh.position;
-    }
-    if (m.seek === "flare") {
-      m.seek = "you";
-      m.flare = null;
-    }
-  }
-  if (m.owner === "you" && (m.seek === "foe" || (m.seek === "flare" && m.flare?.owner === "jev"))) {
-    const decoy = hottestFlare(m, "jev");
-    const close = foeAlive && m.group.position.distanceTo(foePos) < 20;
-    if (decoy && !close) {
-      m.seek = "flare";
-      m.flare = decoy;
-      return decoy.mesh.position;
-    }
-    if (m.seek === "flare" && m.flare?.owner === "jev") {
-      m.seek = "foe";
-      m.flare = null;
-    }
-  }
-  if (m.seek === "flare" && m.flare?.alive) return m.flare.mesh.position;
-  if (m.seek === "foe") return foeAlive ? foePos : null;
-  if (m.seek === "you") return crashed ? null : planePosition;
-  if (m.balloon?.alive) return m.balloon.pos;
-  return null;
-}
-
-function popFlares(owner: "you" | "jev"): void {
-  if (owner === "you") {
-    if (crashed || playerFlares <= 0 || flareCool > 0) return;
-  } else if (!foeAlive || foeFlares <= 0 || foeFlareCool > 0) return;
-  const ammo = owner === "you" ? playerFlares : foeFlares;
-  const n = Math.min(4, ammo);
-  const matrix = owner === "you" ? plane.matrix : foeMesh.matrix;
-  const fwd = owner === "you" ? forward : foeFwd;
-  const right = owner === "you" ? axisX : foeX;
-  const up = owner === "you" ? axisY : foeY;
-  const inherit = owner === "you" ? speed : foeSpeed;
-  let dumped = 0;
-  for (const f of flares) {
-    if (f.alive) continue;
-    flareOff.set((dumped % 2 === 0 ? -1 : 1) * (1.1 + dumped * 0.35), -0.55, 2.1);
-    flareOff.applyMatrix4(matrix);
-    f.mesh.position.copy(flareOff);
-    f.vel
-      .copy(fwd)
-      .multiplyScalar(-14 - dumped * 3)
-      .addScaledVector(fwd, inherit * 0.28)
-      .addScaledVector(right, (Math.random() - 0.5) * 16)
-      .addScaledVector(up, 2 + Math.random() * 7);
-    f.alive = true;
-    f.life = FLARE_LIFE * (0.85 + Math.random() * 0.2);
-    f.heat = 1;
-    f.owner = owner;
-    f.mesh.visible = true;
-    dumped += 1;
-    if (dumped >= n) break;
-  }
-  if (dumped <= 0) return;
-  if (owner === "you") {
-    playerFlares -= dumped;
-    flareCool = 0.85;
-  } else {
-    foeFlares -= dumped;
-    foeFlareCool = 0.9;
-  }
-  if (audio) playFlare(audio);
 }
 
 function logDecision(kind: string, text: string): void {
@@ -1305,10 +1084,6 @@ function logDecision(kind: string, text: string): void {
 }
 
 let jevBusy = false;
-let jevManeuver: FlightManeuver = "pursue";
-let jevWantFire = false;
-let jevAskAt = 0;
-let jevBreakDir = 1;
 let lastPlayerShot = -9999;
 
 function playerShooting(): boolean {
@@ -1322,7 +1097,7 @@ function clockLabel(bearing: number): string {
 }
 
 function huntManeuver(lined: boolean, shotAt: boolean, range: number): FlightManeuver {
-  if (shotAt && !lined) return "break";
+  if (shotAt && !lined) return "reverse";
   if (lined) return "guns";
   if (range < 160) return "lead";
   return "pursue";
@@ -1334,31 +1109,141 @@ function orthonormalize(x: THREE.Vector3, y: THREE.Vector3, z: THREE.Vector3): v
   y.crossVectors(z, x).normalize();
 }
 
-function snapshotFlight(): FlightSnapshot {
-  const you = sight(foePos, foeFwd, foeX, foeY, planePosition);
-  const them = sight(planePosition, forward, axisX, axisY, foePos);
-  const shooting = playerShooting();
-  const alt = planePosition.y - foePos.y;
+type Hunt = {
+  pos: THREE.Vector3;
+  fwd: THREE.Vector3;
+  right: THREE.Vector3;
+  up: THREE.Vector3;
+  hp: number;
+  speed: number;
+  shooting: boolean;
+  label: string;
+};
+
+function livingFoes(): Fighter[] {
+  return foes.filter((f) => f.alive);
+}
+
+function bestHunt(f: Fighter): Hunt | null {
+  let best: Hunt | null = null;
+  let bestScore = -Infinity;
+  const consider = (h: Hunt) => {
+    const you = sight(f.pos, f.fwd, f.axisX, f.axisY, h.pos);
+    let score = (you.lined ? 52 : 0) + (1 - Math.abs(you.bearing)) * 24 - you.range * 0.08;
+    if (h.label === "you") score += 6;
+    if (score > bestScore) {
+      bestScore = score;
+      best = h;
+    }
+  };
+  if (!crashed && playerHp > 0) {
+    consider({
+      pos: planePosition,
+      fwd: forward,
+      right: axisX,
+      up: axisY,
+      hp: playerHp,
+      speed,
+      shooting: playerShooting(),
+      label: "you",
+    });
+  }
+  for (const o of livingFoes()) {
+    if (o.id === f.id) continue;
+    consider({
+      pos: o.pos,
+      fwd: o.fwd,
+      right: o.axisX,
+      up: o.axisY,
+      hp: o.hp,
+      speed: o.speed,
+      shooting: performance.now() - o.lastShot < 380,
+      label: o.name,
+    });
+  }
+  return best;
+}
+
+function asHuntFromPlayer(): Hunt {
+  return {
+    pos: planePosition,
+    fwd: forward,
+    right: axisX,
+    up: axisY,
+    hp: playerHp,
+    speed,
+    shooting: playerShooting(),
+    label: "you",
+  };
+}
+
+function asHuntFromFoe(o: Fighter): Hunt {
+  return {
+    pos: o.pos,
+    fwd: o.fwd,
+    right: o.axisX,
+    up: o.axisY,
+    hp: o.hp,
+    speed: o.speed,
+    shooting: performance.now() - o.lastShot < 380,
+    label: o.name,
+  };
+}
+
+function gunsOnMe(f: Fighter): Hunt | null {
+  let best: Hunt | null = null;
+  let bestAlong = 0.28;
+  const consider = (h: Hunt) => {
+    const them = sight(h.pos, h.fwd, h.right, h.up, f.pos);
+    if (them.range > 320) return;
+    if (them.along < bestAlong) return;
+    bestAlong = them.along;
+    best = h;
+  };
+  if (!crashed && playerHp > 0) consider(asHuntFromPlayer());
+  for (const o of livingFoes()) {
+    if (o.id === f.id) continue;
+    consider(asHuntFromFoe(o));
+  }
+  return best;
+}
+
+function snapYaw180(f: Fighter): void {
+  f.axisX.negate();
+  f.axisZ.negate();
+  orthonormalize(f.axisX, f.axisY, f.axisZ);
+  f.fwd.copy(f.axisZ).negate();
+  f.yaw = 0;
+  f.pitch = 0;
+  f.stickBank = 0;
+  f.stickPitch = 0;
+}
+
+function snapshotFlight(f: Fighter, hunt: Hunt): FlightSnapshot {
+  const you = sight(f.pos, f.fwd, f.axisX, f.axisY, hunt.pos);
+  const them = sight(hunt.pos, hunt.fwd, hunt.right, hunt.up, f.pos);
+  const alt = hunt.pos.y - f.pos.y;
   return {
     rules:
-      "You are Jev in the red plane. Hunt and shoot down the gold player. " +
+      `You are ${f.name} in a three-Jev free-for-all plus the gold player. Hunt the plane in foe. ` +
+      "If they_have_guns_on_you, reverse: 180 onto them, fly backwards, shoot. " +
       "clock is where they sit relative to your nose. they_are_shooting means they pulled the trigger. " +
-      "Stay aggressive. Do not run.",
+      "Stay aggressive. Last plane standing wins. Do not run.",
     you: {
-      hp: foeHp,
-      x: Math.round(foePos.x),
-      y: Math.round(foePos.y),
-      z: Math.round(foePos.z),
-      heading_deg: headingDeg(foeFwd),
-      speed: Math.round(foeSpeed),
+      hp: f.hp,
+      x: Math.round(f.pos.x),
+      y: Math.round(f.pos.y),
+      z: Math.round(f.pos.z),
+      heading_deg: headingDeg(f.fwd),
+      speed: Math.round(f.speed),
     },
     foe: {
-      hp: playerHp,
-      x: Math.round(planePosition.x),
-      y: Math.round(planePosition.y),
-      z: Math.round(planePosition.z),
-      heading_deg: headingDeg(forward),
-      speed: Math.round(speed),
+      hp: hunt.hp,
+      x: Math.round(hunt.pos.x),
+      y: Math.round(hunt.pos.y),
+      z: Math.round(hunt.pos.z),
+      heading_deg: headingDeg(hunt.fwd),
+      speed: Math.round(hunt.speed),
     },
     geometry: {
       range: Math.round(you.range),
@@ -1369,53 +1254,65 @@ function snapshotFlight(): FlightSnapshot {
       high_or_low: alt > 12 ? "high" : alt < -12 ? "low" : "level",
       lined_up: you.lined,
       they_have_guns_on_you: them.lined,
-      they_are_shooting: shooting,
-      they_are_shooting_at_you: shooting && them.lined,
-      incoming_missile: missileOn("jev"),
+      they_are_shooting: hunt.shooting,
+      they_are_shooting_at_you: hunt.shooting && them.lined,
       closing: you.along > 0.15,
       alt_diff: Math.round(alt),
     },
   };
 }
 
-async function askJev(): Promise<void> {
-  if (jevBusy || !foeAlive || crashed) return;
+async function askJev(f: Fighter): Promise<void> {
+  if (jevBusy || !f.alive) return;
+  const hunt = bestHunt(f);
+  if (!hunt) return;
   jevBusy = true;
   const t0 = performance.now();
-  const you = sight(foePos, foeFwd, foeX, foeY, planePosition);
-  const them = sight(planePosition, forward, axisX, axisY, foePos);
+  const you = sight(f.pos, f.fwd, f.axisX, f.axisY, hunt.pos);
+  const them = sight(hunt.pos, hunt.fwd, hunt.right, hunt.up, f.pos);
   try {
     const res = await fetch("/api/flight", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify(snapshotFlight()),
+      body: JSON.stringify(snapshotFlight(f, hunt)),
     });
     const ms = Math.round(performance.now() - t0);
     recordLatency(ms);
     const data = (await res.json()) as FlightPilotResponse;
     if (!res.ok) throw new Error(data.detail || data.error || `http ${res.status}`);
-    const shotAt = playerShooting() && them.lined;
-    let next = data.maneuver ?? huntManeuver(you.lined, shotAt || missileOn("jev"), you.range);
-    if (next === "extend") next = "pursue";
-    if (next === "climb" && foePos.y - heightAt(foePos.x, foePos.z) > FIGHT_AGL_PREF) next = "pursue";
-    if (next === "break" && !shotAt && !missileOn("jev")) next = you.lined ? "guns" : "pursue";
-    jevManeuver = next;
-    jevWantFire = Number(data.fire ?? 0) >= 0.35 || you.lined;
-    statusAction.textContent = `JEV  ${jevManeuver.toUpperCase()}`;
-    statusMeta.textContent = `${ms}ms · ${clockLabel(you.bearing)} · ${playerShooting() ? "under fire" : "hunt"}`;
-    logDecision(jevWantFire ? "flap" : "wait", `${jevManeuver.toUpperCase()}  ${clockLabel(you.bearing)}  ${ms}ms`);
+    const shotAt = hunt.shooting && them.lined;
+    let next = data.maneuver ?? huntManeuver(you.lined, shotAt, you.range);
+    if (next === "extend") next = them.lined ? "reverse" : "pursue";
+    if (next === "climb" && f.pos.y - heightAt(f.pos.x, f.pos.z) > FIGHT_AGL_PREF) next = "pursue";
+    if (next === "break" && them.lined) next = "reverse";
+    if (next === "break" && !shotAt) next = you.lined ? "guns" : "pursue";
+    if (them.lined && !you.lined) next = "reverse";
+    f.maneuver = next;
+    f.wantFire = Number(data.fire ?? 0) >= 0.35 || you.lined;
+    statusAction.textContent = `${f.name}  ${f.maneuver.toUpperCase()}`;
+    statusMeta.textContent = `${ms}ms · ${clockLabel(you.bearing)} · vs ${hunt.label}`;
+    logDecision(f.wantFire ? "flap" : "wait", `${f.name} ${f.maneuver.toUpperCase()}  ${clockLabel(you.bearing)}  ${ms}ms`);
   } catch (err) {
     const message = err instanceof Error ? err.message : "Jev call failed";
     statusAction.textContent = "ERROR";
     statusMeta.textContent = message;
     logDecision("error", message);
-    jevManeuver = huntManeuver(you.lined, (playerShooting() && them.lined) || missileOn("jev"), you.range);
-    jevWantFire = true;
+    f.maneuver = huntManeuver(you.lined, hunt.shooting && them.lined, you.range);
+    f.wantFire = true;
   } finally {
     jevBusy = false;
-    const hot = playerShooting();
-    jevAskAt = performance.now() + (hot ? 450 : 800);
+    f.askAt = performance.now() + (hunt.shooting ? 700 : 1100);
   }
+}
+
+function nextJevAsk(): Fighter | null {
+  const now = performance.now();
+  let pick: Fighter | null = null;
+  for (const f of livingFoes()) {
+    if (now < f.askAt) continue;
+    if (!pick || f.askAt < pick.askAt) pick = f;
+  }
+  return pick;
 }
 
 function fightCeiling(x: number, z: number): number {
@@ -1426,18 +1323,21 @@ function fightFloor(x: number, z: number): number {
   return Math.max(SEA + 18, heightAt(x, z) + FIGHT_AGL_MIN);
 }
 
-function steerFoe(_frames: number): { bank: number; pitch: number; turboOn: boolean } {
-  const you = sight(foePos, foeFwd, foeX, foeY, planePosition);
-  const them = sight(planePosition, forward, axisX, axisY, foePos);
+function steerFoe(f: Fighter, hunt: Hunt, _frames: number): { bank: number; pitch: number; turboOn: boolean } {
+  const you = sight(f.pos, f.fwd, f.axisX, f.axisY, hunt.pos);
+  const them = sight(hunt.pos, hunt.fwd, hunt.right, hunt.up, f.pos);
   const leadAmt = THREE.MathUtils.clamp(you.range * 0.18, 10, 55);
-  aimPoint.copy(planePosition).addScaledVector(forward, leadAmt);
+  aimPoint.copy(hunt.pos).addScaledVector(hunt.fwd, leadAmt);
   const gAim = heightAt(aimPoint.x, aimPoint.z);
-  aimPoint.y = THREE.MathUtils.clamp(Math.min(planePosition.y, gAim + FIGHT_AGL_MAX), gAim + FIGHT_AGL_MIN, gAim + FIGHT_AGL_MAX);
-  const lead = sight(foePos, foeFwd, foeX, foeY, aimPoint);
-  const look =
-    jevManeuver === "guns" && planePosition.y <= fightCeiling(planePosition.x, planePosition.z) ? you : lead;
-  const shotAt = (playerShooting() && them.lined) || missileOn("jev");
-  const agl = foePos.y - heightAt(foePos.x, foePos.z);
+  aimPoint.y = THREE.MathUtils.clamp(
+    Math.min(hunt.pos.y, gAim + FIGHT_AGL_MAX),
+    gAim + FIGHT_AGL_MIN,
+    gAim + FIGHT_AGL_MAX,
+  );
+  const lead = sight(f.pos, f.fwd, f.axisX, f.axisY, aimPoint);
+  const look = f.backFlight || f.maneuver === "reverse" || f.maneuver === "guns" ? you : lead;
+  const shotAt = hunt.shooting && them.lined;
+  const agl = f.pos.y - heightAt(f.pos.x, f.pos.z);
   let bank = 0;
   let pitch = 0;
   if (look.bearing > 0.04) bank = -1;
@@ -1445,22 +1345,55 @@ function steerFoe(_frames: number): { bank: number; pitch: number; turboOn: bool
   if (look.elevation > 0.04) pitch = 1;
   else if (look.elevation < -0.04) pitch = -1;
   if (Math.abs(look.bearing) > 0.22 && agl < FIGHT_AGL_PREF) pitch = Math.max(pitch, 0.45);
-  if (jevManeuver === "climb" && agl < FIGHT_AGL_PREF - 4) pitch = 1;
-  if (jevManeuver === "dive" || agl > FIGHT_AGL_PREF + 6) pitch = Math.min(pitch, -0.35);
-  if (shotAt || jevManeuver === "break") {
-    bank = jevBreakDir;
-    if (Math.abs(look.bearing) > 0.35) bank = look.bearing > 0 ? -1 : 1;
-    pitch = agl > FIGHT_AGL_PREF ? -0.4 : pitch;
+  if (f.maneuver === "climb" && agl < FIGHT_AGL_PREF - 4) pitch = 1;
+  if (f.maneuver === "dive" || agl > FIGHT_AGL_PREF + 6) pitch = Math.min(pitch, -0.35);
+  if (!f.backFlight && f.maneuver !== "reverse" && (shotAt || f.maneuver === "break")) {
+    bank = f.breakDir * 0.55;
+    if (Math.abs(look.bearing) > 0.35) bank = (look.bearing > 0 ? -1 : 1) * 0.55;
+    pitch = agl > FIGHT_AGL_PREF ? -0.25 : pitch * 0.6;
   }
-  if (agl < FIGHT_AGL_MIN + 8 || foePos.y < SEA + 22) {
+  if (agl < FIGHT_AGL_MIN + 8 || f.pos.y < SEA + 22) {
     pitch = 1;
     if (agl < FIGHT_AGL_MIN) bank *= 0.25;
   }
   if (agl > FIGHT_AGL_MAX - 8) pitch = Math.min(pitch, -0.75);
   if (agl > FIGHT_AGL_MAX) pitch = -1;
   const pointed = Math.abs(look.bearing) < 0.85 && you.along > -0.1;
-  const turboOn = you.range > 150 && pointed && agl < FIGHT_AGL_MAX - 4;
+  const turboOn = !f.backFlight && f.maneuver !== "reverse" && you.range > 150 && pointed && agl < FIGHT_AGL_MAX - 4;
   return { bank, pitch, turboOn };
+}
+
+function maybeLast(): void {
+  const live = livingFoes();
+  const youLive = !crashed && playerHp > 0;
+  if (youLive && live.length === 0) {
+    won = true;
+    banner.classList.remove("is-hidden");
+    bannerText.textContent = "Last standing. Three Jevs down. R to scramble again.";
+    statusAction.textContent = "LAST";
+    statusMeta.textContent = "You won the furball";
+    bannerUntil = Infinity;
+    logDecision("flap", "LAST STANDING");
+    return;
+  }
+  if (!youLive && live.length === 1) {
+    won = true;
+    banner.classList.remove("is-hidden");
+    bannerText.textContent = `${live[0]!.name} is last standing. R to scramble again.`;
+    statusAction.textContent = "LAST";
+    statusMeta.textContent = live[0]!.name;
+    bannerUntil = Infinity;
+    logDecision("flap", `${live[0]!.name} LAST`);
+    return;
+  }
+  if (!youLive && live.length === 0) {
+    won = true;
+    banner.classList.remove("is-hidden");
+    bannerText.textContent = "Everyone is down. R to scramble again.";
+    statusAction.textContent = "WIPE";
+    statusMeta.textContent = "no one left";
+    bannerUntil = Infinity;
+  }
 }
 
 function damagePlayer(amount = 1): void {
@@ -1469,25 +1402,21 @@ function damagePlayer(amount = 1): void {
   playerInvuln = amount > 1 ? 1.05 : 0.85;
   spawnBlast(planePosition.clone().addScaledVector(forward, 2));
   if (audio) playBoom(audio);
-  if (playerHp <= 0) crash(amount > 1 ? "Missile. Jev boxed you." : "Jev shot you down.");
+  if (playerHp <= 0) crash("You're down. Spectating — C to cycle cameras.");
 }
 
-function damageFoe(amount = 1): void {
-  if (!foeAlive || foeInvuln > 0) return;
-  foeHp -= amount;
-  foeInvuln = amount > 1 ? 1.05 : 0.85;
-  spawnBlast(foePos.clone());
+function damageFoe(f: Fighter, amount = 1): void {
+  if (!f.alive || f.invuln > 0) return;
+  f.hp -= amount;
+  f.invuln = amount > 1 ? 1.05 : 0.85;
+  spawnBlast(f.pos.clone());
   if (audio) playBoom(audio);
-  if (foeHp <= 0) {
-    foeAlive = false;
-    foeMesh.visible = false;
-    spawnBlast(foePos.clone());
-    banner.classList.remove("is-hidden");
-    bannerText.textContent = "Jev is down. R to scramble again.";
-    statusAction.textContent = "SPLASH";
-    statusMeta.textContent = "You shot Jev down";
-    bannerUntil = Infinity;
-    logDecision("flap", "JEV DOWN");
+  if (f.hp <= 0) {
+    f.alive = false;
+    f.mesh.visible = false;
+    spawnBlast(f.pos.clone());
+    logDecision("flap", `${f.name} DOWN`);
+    maybeLast();
   }
 }
 
@@ -1507,6 +1436,7 @@ const rotMatrix = new THREE.Matrix4();
 const planeMatrix = new THREE.Matrix4();
 const delayedRotMatrix = new THREE.Matrix4();
 const delayedQuaternion = new THREE.Quaternion();
+const hpBillboardQuat = new THREE.Quaternion();
 const quatFrom = new THREE.Quaternion();
 const quatTo = new THREE.Quaternion();
 const camMatrix = new THREE.Matrix4();
@@ -1519,6 +1449,8 @@ const sunOffset = sunSpherical.clone().multiplyScalar(420);
 const CRUISE = 1.35;
 const MAX_TURN = 0.045;
 const TURN_ACCEL = 0.0028;
+const FOE_MAX_TURN = MAX_TURN * 0.4;
+const FOE_TURN_ACCEL = TURN_ACCEL * 0.48;
 
 let yawVel = 0;
 let pitchVel = 0;
@@ -1546,40 +1478,33 @@ function reset(): void {
   fireCool = 0;
   playerHp = MAX_HP;
   playerInvuln = 0;
-  foeHp = MAX_HP;
-  foeAlive = true;
-  foeInvuln = 0;
-  foeYaw = 0;
-  foePitch = 0;
-  foeTurbo = 0.2;
-  foeSpeed = CRUISE;
-  foeFireCool = 0;
-  playerMsl = MSL_AMMO;
-  foeMsl = MSL_AMMO;
-  foeMissileCool = 1.2;
-  lockT = 0;
-  for (const m of missiles) {
-    m.alive = false;
-    m.group.visible = false;
-    m.trail.visible = false;
-    m.balloon = null;
-    m.flare = null;
+  plane.visible = true;
+  specI = 0;
+  for (const f of foes) {
+    f.hp = MAX_HP;
+    f.alive = true;
+    f.invuln = 0;
+    f.yaw = 0;
+    f.pitch = 0;
+    f.stickBank = 0;
+    f.stickPitch = 0;
+    f.turbo = 0.2;
+    f.speed = CRUISE;
+    f.fireCool = 0;
+    f.maneuver = "pursue";
+    f.wantFire = false;
+    f.askAt = performance.now() + 350 + f.id * 160;
+    f.breakDir = Math.random() < 0.5 ? 1 : -1;
+    f.lastShot = -9999;
+    f.backFlight = false;
+    f.revUntil = 0;
+    f.pos.copy(f.spawn);
+    f.axisX.set(-1, 0, 0);
+    f.axisY.set(0, 1, 0);
+    f.axisZ.set(0, 0, -1);
+    f.mesh.visible = true;
   }
-  for (const f of flares) killFlare(f);
-  playerFlares = FLARE_AMMO;
-  foeFlares = FLARE_AMMO;
-  flareCool = 0;
-  foeFlareCool = 0;
-  foePos.set(48, 32, -70);
-  foeX.set(-1, 0, 0);
-  foeY.set(0, 1, 0);
-  foeZ.set(0, 0, -1);
-  foeMesh.visible = true;
-  jevManeuver = "pursue";
-  jevWantFire = false;
   jevBusy = false;
-  jevAskAt = performance.now() + 400;
-  jevBreakDir = Math.random() < 0.5 ? 1 : -1;
   for (const b of bullets) {
     b.alive = false;
     b.mesh.visible = false;
@@ -1605,7 +1530,7 @@ function reset(): void {
     mat.emissive.setHex(i === 0 ? 0x664400 : 0x0a3048);
   }
   banner.classList.remove("is-hidden");
-  bannerText.textContent = "Hold the nose on Jev until the pipper goes red, then F for a missile.";
+  bannerText.textContent = "Three Jevs, free-for-all. Last plane standing wins.";
   bannerUntil = performance.now() + 4500;
   statusAction.textContent = "SCRAMBLE";
   statusMeta.textContent = "waiting for Jev";
@@ -1629,23 +1554,34 @@ function highlightRing(): void {
   }
 }
 
+function specFoe(): Fighter | null {
+  const live = livingFoes();
+  if (!live.length) return null;
+  specI = ((specI % live.length) + live.length) % live.length;
+  return live[specI]!;
+}
+
 function crash(reason: string): void {
   crashed = true;
   turbo = 0;
+  plane.visible = false;
   const ground = heightAt(planePosition.x, planePosition.z);
   planePosition.y = Math.max(planePosition.y, ground + 8);
   banner.classList.remove("is-hidden");
   bannerText.textContent = reason;
-  statusAction.textContent = "DOWN";
-  statusMeta.textContent = "R to restart";
-  bannerUntil = Infinity;
-  if (audio) {
+  statusAction.textContent = livingFoes().length ? "SPECTATE" : "DOWN";
+  statusMeta.textContent = livingFoes().length ? "C to cycle · R restart" : "R to restart";
+  bannerUntil = livingFoes().length ? performance.now() + 4200 : Infinity;
+  if (audio && !livingFoes().length) {
     const now = audio.ctx.currentTime;
     audio.master.gain.cancelScheduledValues(now);
     audio.master.gain.setValueAtTime(audio.master.gain.value, now);
     audio.master.gain.linearRampToValueAtTime(0.0001, now + 0.4);
     playBoom(audio);
+  } else if (audio) {
+    playBoom(audio);
   }
+  maybeLast();
 }
 
 function finish(): void {
@@ -1680,10 +1616,6 @@ canvas.addEventListener("pointerdown", (e) => {
     ensureAudio();
     fireGun();
   }
-  if (e.button === 2) {
-    ensureAudio();
-    fireMissile("you");
-  }
 });
 canvas.addEventListener("contextmenu", (e) => e.preventDefault());
 window.addEventListener("pointerup", () => {
@@ -1691,19 +1623,11 @@ window.addEventListener("pointerup", () => {
 });
 window.addEventListener("keydown", (e) => {
   if (e.code === "KeyR") reset();
-  if (e.code === "KeyC") closeCam = !closeCam;
+  if (e.code === "KeyC") {
+    if (crashed) specI += 1;
+    else closeCam = !closeCam;
+  }
   if (e.code === "Space") ensureAudio();
-  if (e.code === "KeyX") {
-    if (e.repeat) return;
-    ensureAudio();
-    popFlares("you");
-  }
-  if (e.code === "KeyF") {
-    if (e.repeat) return;
-    e.preventDefault();
-    ensureAudio();
-    fireMissile("you");
-  }
 });
 
 reset();
@@ -1756,7 +1680,8 @@ function drawRadar(elapsed: number): void {
   ctx.closePath();
   ctx.fill();
 
-  if (!foeAlive) {
+  const contacts = livingFoes();
+  if (!contacts.length) {
     radarRng.textContent = "—";
     radarAlt.textContent = "—";
     ctx.fillStyle = "rgba(200, 210, 220, 0.55)";
@@ -1765,87 +1690,147 @@ function drawRadar(elapsed: number): void {
     ctx.fillText("NO CNTC", cx, cx + r * 0.18);
     return;
   }
-  const dx = foePos.x - planePosition.x;
-  const dz = foePos.z - planePosition.z;
-  const localRight = dx * axisX.x + dz * axisX.z;
-  const localFwd = dx * forward.x + dz * forward.z;
-  const dist = Math.hypot(localRight, localFwd);
-  const range = THREE.MathUtils.clamp(dist * 1.25, RADAR_MIN, RADAR_MAX);
-  const scale = r / range;
-  let px = localRight * scale;
-  let py = -localFwd * scale;
-  const mag = Math.hypot(px, py);
-  let offScale = false;
-  if (mag > r * 0.92) {
-    const k = (r * 0.92) / mag;
-    px *= k;
-    py *= k;
-    offScale = true;
+  let nearestDist = Infinity;
+  let nearest: Fighter | null = null;
+  for (const f of contacts) {
+    const dx = f.pos.x - planePosition.x;
+    const dz = f.pos.z - planePosition.z;
+    const localRight = dx * axisX.x + dz * axisX.z;
+    const localFwd = dx * forward.x + dz * forward.z;
+    const dist = Math.hypot(localRight, localFwd);
+    if (dist < nearestDist) {
+      nearestDist = dist;
+      nearest = f;
+    }
+    const range = THREE.MathUtils.clamp(dist * 1.25, RADAR_MIN, RADAR_MAX);
+    const scale = r / range;
+    let px = localRight * scale;
+    let py = -localFwd * scale;
+    const mag = Math.hypot(px, py);
+    let offScale = false;
+    if (mag > r * 0.92) {
+      const k = (r * 0.92) / mag;
+      px *= k;
+      py *= k;
+      offScale = true;
+    }
+    const bx = cx + px;
+    const by = cx + py;
+    const alt = f.pos.y - planePosition.y;
+    const band = Math.abs(alt) < 10 ? "level" : alt > 0 ? "high" : "low";
+    const hFwd = f.fwd.x * forward.x + f.fwd.z * forward.z;
+    const hRight = f.fwd.x * axisX.x + f.fwd.z * axisX.z;
+    const col = `#${f.color.toString(16).padStart(6, "0")}`;
+    ctx.strokeStyle = col;
+    ctx.lineWidth = Math.max(2, w * 0.01);
+    ctx.beginPath();
+    ctx.moveTo(bx, by);
+    ctx.lineTo(bx + hRight * w * 0.055, by - hFwd * w * 0.055);
+    ctx.stroke();
+    ctx.fillStyle = col;
+    ctx.beginPath();
+    ctx.arc(bx, by, w * (offScale ? 0.016 : 0.02), 0, Math.PI * 2);
+    ctx.fill();
+    if (band !== "level") {
+      const stem = w * (0.035 + Math.min(0.04, Math.abs(alt) / 900));
+      ctx.strokeStyle = "#ffe27a";
+      ctx.fillStyle = "#ffe27a";
+      ctx.lineWidth = Math.max(2, w * 0.012);
+      ctx.beginPath();
+      if (band === "high") {
+        ctx.moveTo(bx, by);
+        ctx.lineTo(bx, by - stem);
+        ctx.stroke();
+        ctx.beginPath();
+        ctx.moveTo(bx, by - stem - w * 0.008);
+        ctx.lineTo(bx + w * 0.024, by - stem + w * 0.024);
+        ctx.lineTo(bx - w * 0.024, by - stem + w * 0.024);
+      } else {
+        ctx.moveTo(bx, by);
+        ctx.lineTo(bx, by + stem);
+        ctx.stroke();
+        ctx.beginPath();
+        ctx.moveTo(bx, by + stem + w * 0.008);
+        ctx.lineTo(bx + w * 0.024, by + stem - w * 0.024);
+        ctx.lineTo(bx - w * 0.024, by + stem - w * 0.024);
+      }
+      ctx.closePath();
+      ctx.fill();
+    }
   }
-  const bx = cx + px;
-  const by = cx + py;
-  const alt = foePos.y - planePosition.y;
+  const dist = nearestDist;
+  const alt = nearest ? nearest.pos.y - planePosition.y : 0;
   const altFt = Math.round(alt * 3.28);
   const band = Math.abs(alt) < 10 ? "level" : alt > 0 ? "high" : "low";
-  const hFwd = foeFwd.x * forward.x + foeFwd.z * forward.z;
-  const hRight = foeFwd.x * axisX.x + foeFwd.z * axisX.z;
-  ctx.strokeStyle = "rgba(255, 120, 100, 0.95)";
-  ctx.lineWidth = Math.max(2, w * 0.01);
-  ctx.beginPath();
-  ctx.moveTo(bx, by);
-  ctx.lineTo(bx + hRight * w * 0.055, by - hFwd * w * 0.055);
-  ctx.stroke();
-  ctx.fillStyle = "#ff6b5a";
-  ctx.beginPath();
-  ctx.arc(bx, by, w * (offScale ? 0.018 : 0.022), 0, Math.PI * 2);
-  ctx.fill();
-  ctx.strokeStyle = "rgba(255, 180, 160, 0.9)";
-  ctx.lineWidth = Math.max(1, w * 0.007);
-  ctx.stroke();
-  if (band !== "level") {
-    const stem = w * (0.04 + Math.min(0.05, Math.abs(alt) / 900));
-    ctx.strokeStyle = "#ffe27a";
-    ctx.fillStyle = "#ffe27a";
-    ctx.lineWidth = Math.max(2, w * 0.014);
-    ctx.beginPath();
-    if (band === "high") {
-      ctx.moveTo(bx, by);
-      ctx.lineTo(bx, by - stem);
-      ctx.stroke();
-      ctx.beginPath();
-      ctx.moveTo(bx, by - stem - w * 0.008);
-      ctx.lineTo(bx + w * 0.028, by - stem + w * 0.028);
-      ctx.lineTo(bx - w * 0.028, by - stem + w * 0.028);
-    } else {
-      ctx.moveTo(bx, by);
-      ctx.lineTo(bx, by + stem);
-      ctx.stroke();
-      ctx.beginPath();
-      ctx.moveTo(bx, by + stem + w * 0.008);
-      ctx.lineTo(bx + w * 0.028, by + stem - w * 0.028);
-      ctx.lineTo(bx - w * 0.028, by + stem - w * 0.028);
-    }
-    ctx.closePath();
-    ctx.fill();
-  }
   radarRng.textContent = dist.toFixed(0);
   radarAlt.textContent =
     band === "level" ? "LVL" : band === "high" ? `HI +${Math.abs(altFt)}` : `LO −${Math.abs(altFt)}`;
-  for (const m of missiles) {
-    if (!m.alive) continue;
-    const mdx = m.group.position.x - planePosition.x;
-    const mdz = m.group.position.z - planePosition.z;
-    let mx = (mdx * axisX.x + mdz * axisX.z) * scale;
-    let mz = -(mdx * forward.x + mdz * forward.z) * scale;
-    const mm = Math.hypot(mx, mz);
-    if (mm > r * 0.92 && mm > 0.001) {
-      mx *= (r * 0.92) / mm;
-      mz *= (r * 0.92) / mm;
+}
+
+function drawHuntArrows(): void {
+  const cssW = huntCanvas.clientWidth || canvas.clientWidth || 1280;
+  const cssH = huntCanvas.clientHeight || canvas.clientHeight || 720;
+  const dpr = Math.min(2, window.devicePixelRatio || 1);
+  const bw = Math.max(1, Math.round(cssW * dpr));
+  const bh = Math.max(1, Math.round(cssH * dpr));
+  if (huntCanvas.width !== bw || huntCanvas.height !== bh) {
+    huntCanvas.width = bw;
+    huntCanvas.height = bh;
+  }
+  const ctx = huntCtx;
+  ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+  ctx.clearRect(0, 0, cssW, cssH);
+  camera.updateMatrixWorld(true);
+  camera.getWorldPosition(huntCamPos);
+  camera.getWorldDirection(huntCamFwd);
+  const viewFoe = crashed ? specFoe() : null;
+  const padX = 22;
+  const padY = 54;
+  const hw = cssW * 0.5 - padX;
+  const hh = cssH * 0.5 - padY;
+
+  for (const f of livingFoes()) {
+    if (viewFoe && f.id === viewFoe.id) continue;
+    huntNdc.copy(f.pos).project(camera);
+    let nx = huntNdc.x;
+    let ny = huntNdc.y;
+    const toX = f.pos.x - huntCamPos.x;
+    const toY = f.pos.y - huntCamPos.y;
+    const toZ = f.pos.z - huntCamPos.z;
+    if (toX * huntCamFwd.x + toY * huntCamFwd.y + toZ * huntCamFwd.z < 0) {
+      nx = -nx;
+      ny = -ny;
     }
-    ctx.fillStyle = m.owner === "jev" ? "#ffb347" : "#fff4c2";
+    let dx = nx;
+    let dy = -ny;
+    const mag = Math.hypot(dx, dy);
+    if (mag < 1e-4) {
+      dx = 0;
+      dy = -1;
+    }
+    const tx = Math.abs(dx) < 1e-5 ? Infinity : hw / Math.abs(dx);
+    const ty = Math.abs(dy) < 1e-5 ? Infinity : hh / Math.abs(dy);
+    const t = Math.min(tx, ty);
+    const x = cssW * 0.5 + dx * t;
+    const y = cssH * 0.5 + dy * t;
+    const ang = Math.atan2(dy, dx);
+    const col = `#${f.color.toString(16).padStart(6, "0")}`;
+    ctx.save();
+    ctx.translate(x, y);
+    ctx.rotate(ang);
     ctx.beginPath();
-    ctx.arc(cx + mx, cx + mz, w * 0.013, 0, Math.PI * 2);
+    ctx.moveTo(16, 0);
+    ctx.lineTo(-11, 11);
+    ctx.lineTo(-5, 0);
+    ctx.lineTo(-11, -11);
+    ctx.closePath();
+    ctx.fillStyle = col;
+    ctx.strokeStyle = "rgba(8, 12, 16, 0.75)";
+    ctx.lineWidth = 2;
+    ctx.lineJoin = "round";
     ctx.fill();
+    ctx.stroke();
+    ctx.restore();
   }
 }
 
@@ -1858,8 +1843,9 @@ function tick(): void {
   const waterTime = waterMat.userData.uTime;
   if (waterTime) waterTime.value = clock.elapsedTime;
   playerInvuln = Math.max(0, playerInvuln - dt);
-  foeInvuln = Math.max(0, foeInvuln - dt);
-  if (foeAlive && !crashed && performance.now() >= jevAskAt) void askJev();
+  for (const f of foes) f.invuln = Math.max(0, f.invuln - dt);
+  const ask = nextJevAsk();
+  if (ask) void askJev(ask);
 
   if (!crashed && !won) {
     yawVel *= Math.pow(0.95, frames);
@@ -1898,7 +1884,7 @@ function tick(): void {
     camera.updateProjectionMatrix();
 
     const ground = heightAt(planePosition.x, planePosition.z);
-    if (planePosition.y < ground + 2.2) {
+    if (planePosition.y < ground + 4.2) {
       crash(speed > 140 ? "Impact. You came in too hot." : "Terrain. Keep the yellow ring ahead.");
     } else if (planePosition.y < SEA + 1.6 && ground < 2) {
       crash("Ditched. Stay over the islands.");
@@ -1914,112 +1900,123 @@ function tick(): void {
   }
 
   rotMatrix.makeBasis(axisX, axisY, axisZ);
-  planeMatrix.makeTranslation(planePosition.x, planePosition.y, planePosition.z).multiply(rotMatrix);
+  planeMatrix.makeTranslation(planePosition.x, planePosition.y, planePosition.z).multiply(rotMatrix).multiply(planeScaleMat);
   plane.matrix.copy(planeMatrix);
   plane.matrixWorldNeedsUpdate = true;
 
-  if (foeAlive) {
-    const stick = steerFoe(frames);
-    foeYaw *= Math.pow(0.95, frames);
-    foePitch *= Math.pow(0.95, frames);
-    foeYaw += stick.bank * TURN_ACCEL * 1.4 * frames;
-    foePitch += stick.pitch * TURN_ACCEL * 1.25 * frames;
-    foeYaw = THREE.MathUtils.clamp(foeYaw, -MAX_TURN, MAX_TURN);
-    foePitch = THREE.MathUtils.clamp(foePitch, -MAX_TURN, MAX_TURN);
-    foeX.applyAxisAngle(foeZ, foeYaw);
-    foeY.applyAxisAngle(foeZ, foeYaw);
-    foeY.applyAxisAngle(foeX, foePitch);
-    foeZ.applyAxisAngle(foeX, foePitch);
-    orthonormalize(foeX, foeY, foeZ);
-    if (stick.turboOn) foeTurbo = Math.min(1, foeTurbo + 0.025 * frames);
-    else foeTurbo *= Math.pow(0.95, frames);
-    const chase = sight(foePos, foeFwd.copy(foeZ).negate(), foeX, foeY, planePosition);
+  for (const f of livingFoes()) {
+    const tail = gunsOnMe(f);
+    const nowMs = performance.now();
+    if ((tail || f.maneuver === "reverse") && !f.backFlight) {
+      const faceAt = tail ?? bestHunt(f);
+      const facing = faceAt ? sight(f.pos, f.fwd, f.axisX, f.axisY, faceAt.pos) : null;
+      if (!facing?.lined) snapYaw180(f);
+      f.backFlight = true;
+      f.revUntil = nowMs + 2400;
+      f.maneuver = "reverse";
+      f.wantFire = true;
+    } else if (f.backFlight && (tail || f.maneuver === "reverse")) {
+      f.revUntil = Math.max(f.revUntil, nowMs + 400);
+    } else if (f.backFlight && nowMs > f.revUntil) {
+      f.backFlight = false;
+    }
+    const hunt = f.backFlight && tail ? tail : bestHunt(f);
+    const stick = hunt ? steerFoe(f, hunt, frames) : { bank: 0, pitch: 0.2, turboOn: false };
+    f.stickBank += (stick.bank - f.stickBank) * Math.min(1, 0.035 * frames);
+    f.stickPitch += (stick.pitch - f.stickPitch) * Math.min(1, 0.035 * frames);
+    const load = Math.hypot(f.stickBank, f.stickPitch);
+    if (load > 1) {
+      f.stickBank /= load;
+      f.stickPitch /= load;
+    }
+    f.yaw *= Math.pow(0.95, frames);
+    f.pitch *= Math.pow(0.95, frames);
+    f.yaw += f.stickBank * FOE_TURN_ACCEL * frames;
+    f.pitch += f.stickPitch * FOE_TURN_ACCEL * frames;
+    f.yaw = THREE.MathUtils.clamp(f.yaw, -FOE_MAX_TURN, FOE_MAX_TURN);
+    f.pitch = THREE.MathUtils.clamp(f.pitch, -FOE_MAX_TURN, FOE_MAX_TURN);
+    f.axisX.applyAxisAngle(f.axisZ, f.yaw);
+    f.axisY.applyAxisAngle(f.axisZ, f.yaw);
+    f.axisY.applyAxisAngle(f.axisX, f.pitch);
+    f.axisZ.applyAxisAngle(f.axisX, f.pitch);
+    orthonormalize(f.axisX, f.axisY, f.axisZ);
+    if (stick.turboOn) f.turbo = Math.min(1, f.turbo + 0.025 * frames);
+    else f.turbo *= Math.pow(0.95, frames);
+    const chase = hunt
+      ? sight(f.pos, f.fwd.copy(f.axisZ).negate(), f.axisX, f.axisY, hunt.pos)
+      : { range: 200, bearing: 0, elevation: 0, along: 1, lined: false };
     const far = THREE.MathUtils.clamp((chase.range - 90) / 280, 0, 1);
-    const foeBoost = easeOutQuad(foeTurbo) * (1.15 + far * 1.15);
-    foeSpeed = (CRUISE + foeBoost) * 60;
-    foePos.addScaledVector(foeZ, -(CRUISE + foeBoost) * frames);
-    const foeGround = heightAt(foePos.x, foePos.z);
-    const ceil = fightCeiling(foePos.x, foePos.z);
-    const floor = fightFloor(foePos.x, foePos.z);
-    if (foePos.y < floor) {
-      foePos.y = floor;
-      foePitch = Math.max(foePitch, 0.01);
+    const foeBoost = easeOutQuad(f.turbo) * (1.15 + far * 1.15);
+    f.speed = (CRUISE + foeBoost) * 60;
+    const step = (CRUISE + foeBoost) * frames;
+    f.pos.addScaledVector(f.axisZ, (f.backFlight ? 1 : -1) * step);
+    const ceil = fightCeiling(f.pos.x, f.pos.z);
+    const floor = fightFloor(f.pos.x, f.pos.z);
+    if (f.pos.y < floor) {
+      f.pos.y = floor;
+      f.pitch = Math.max(f.pitch, 0.01);
     }
-    if (foePos.y > ceil) {
-      foePos.y = ceil;
-      foePitch = Math.min(foePitch, -0.014);
+    if (f.pos.y > ceil) {
+      f.pos.y = ceil;
+      f.pitch = Math.min(f.pitch, -0.014);
     }
-    if (chase.range > 1600) {
-      foePos.copy(planePosition).addScaledVector(forward, 180).addScaledVector(axisX, 70);
-      foePos.y = THREE.MathUtils.clamp(foePos.y, fightFloor(foePos.x, foePos.z), fightCeiling(foePos.x, foePos.z));
-      foeZ.copy(forward).negate();
-      foeY.set(0, 1, 0);
-      orthonormalize(foeX, foeY, foeZ);
-    }
-    foeFwd.copy(foeZ).negate();
-    foeRot.makeBasis(foeX, foeY, foeZ);
-    foeMat.makeTranslation(foePos.x, foePos.y, foePos.z).multiply(foeRot);
-    foeMesh.matrix.copy(foeMat);
-    foeMesh.matrixWorldNeedsUpdate = true;
-    (foeProp as THREE.Object3D).rotation.z -= (1.4 + foeTurbo * 2.2) * frames;
-    const foeDisc = foePropDisc.material as THREE.MeshBasicMaterial;
-    foeDisc.opacity = 0.08 + foeTurbo * 0.22;
-    foeFireCool = Math.max(0, foeFireCool - dt);
-    const jevSight = sight(foePos, foeFwd, foeX, foeY, planePosition);
+    f.fwd.copy(f.axisZ).negate();
+    f.rot.makeBasis(f.axisX, f.axisY, f.axisZ);
+    f.mat.makeTranslation(f.pos.x, f.pos.y, f.pos.z).multiply(f.rot).multiply(planeScaleMat);
+    f.mesh.matrix.copy(f.mat);
+    f.mesh.matrixWorldNeedsUpdate = true;
+    f.prop.rotation.z -= (1.4 + f.turbo * 2.2) * frames;
+    const foeDisc = f.propDisc.material as THREE.MeshBasicMaterial;
+    foeDisc.opacity = 0.08 + f.turbo * 0.22;
+    f.fireCool = Math.max(0, f.fireCool - dt);
     const onTarget =
-      jevSight.along > 0.2 && Math.abs(jevSight.bearing) < 0.28 && Math.abs(jevSight.elevation) < 0.24;
-    const mayFire = !crashed && foeFireCool <= 0 && onTarget && jevManeuver !== "break";
+      hunt != null && chase.along > 0.2 && Math.abs(chase.bearing) < 0.28 && Math.abs(chase.elevation) < 0.24;
+    const mayFire =
+      f.fireCool <= 0 &&
+      onTarget &&
+      (f.backFlight || f.maneuver === "reverse" || f.maneuver !== "break") &&
+      (f.wantFire || onTarget || f.backFlight);
     if (mayFire) {
-      foeGunSide = fireFrom("jev", foeMesh.matrix, foeFwd, foeRot, foeGunSide);
-      foeFireCool = 0.09;
+      f.gunSide = fireFrom(f.id, f.mesh.matrix, f.fwd, f.rot, f.gunSide);
+      f.fireCool = 0.09;
     }
-    foeMissileCool = Math.max(0, foeMissileCool - dt);
-    const mayMissile =
-      !crashed &&
-      foeMissileCool <= 0 &&
-      foeMsl > 0 &&
-      jevSight.along > 0.42 &&
-      jevSight.range > 90 &&
-      jevSight.range < 500 &&
-      Math.abs(jevSight.bearing) < 0.42 &&
-      Math.abs(jevSight.elevation) < 0.36 &&
-      jevManeuver !== "break";
-    if (mayMissile) {
-      fireMissile("jev");
-      foeMissileCool = 4.6;
-    }
-    foeFlareCool = Math.max(0, foeFlareCool - dt);
-    if (missileOn("jev")) popFlares("jev");
   }
 
+  const viewFoe = crashed ? specFoe() : null;
+  const camPos = viewFoe ? viewFoe.pos : planePosition;
+  const camRotSrc = viewFoe ? viewFoe.rot : rotMatrix;
   quatFrom.copy(delayedQuaternion);
-  quatTo.setFromRotationMatrix(rotMatrix);
+  quatTo.setFromRotationMatrix(camRotSrc);
   delayedQuaternion.copy(quatFrom).slerp(quatTo, 1 - Math.pow(1 - 0.175, frames));
   delayedRotMatrix.makeRotationFromQuaternion(delayedQuaternion);
 
-  const back = closeCam ? 5.2 : 13.5;
-  const lift = closeCam ? 1.35 : 2.6;
-  camMatrix.makeTranslation(planePosition.x, planePosition.y, planePosition.z);
+  const back = closeCam ? 14.8 : 34;
+  const lift = closeCam ? 2.6 : 5;
+  camMatrix.makeTranslation(camPos.x, camPos.y, camPos.z);
   camMatrix.multiply(delayedRotMatrix);
   camMatrix.multiply(tiltMatrix.makeRotationX(-0.18));
   camMatrix.multiply(camOffMatrix.makeTranslation(0, lift, back));
   camera.matrix.copy(camMatrix);
   camera.matrixWorldNeedsUpdate = true;
+  camera.updateMatrixWorld(true);
+  hpBillboardQuat.setFromRotationMatrix(camera.matrixWorld);
+  placeHpBar(youHp.bar, youHp.barFill, planePosition, axisY, playerHp, 0xe7c14a, !crashed && playerHp > 0);
+  for (const f of foes) {
+    placeHpBar(f.bar, f.barFill, f.pos, f.axisY, f.hp, f.color, f.alive);
+  }
 
-  sun.position.copy(planePosition).add(sunOffset);
-  sun.target.position.copy(planePosition);
+  sun.position.copy(camPos).add(sunOffset);
+  sun.target.position.copy(camPos);
   sun.target.updateMatrixWorld();
 
   forward.copy(axisZ).negate();
   up.copy(axisY);
 
   fireCool = Math.max(0, fireCool - dt);
-  flareCool = Math.max(0, flareCool - dt);
   if (!crashed && (held("Space") || mouseDown) && fireCool <= 0) {
     fireGun();
     fireCool = 0.085;
   }
-  if (!crashed && held("KeyX")) popFlares("you");
 
   for (const b of bullets) {
     if (!b.alive) continue;
@@ -2030,17 +2027,35 @@ function tick(): void {
       b.mesh.visible = false;
       continue;
     }
-    if (b.owner === "you" && foeAlive && foeInvuln <= 0 && b.mesh.position.distanceTo(foePos) < HIT_R) {
-      damageFoe();
-      b.alive = false;
-      b.mesh.visible = false;
-      continue;
-    }
-    if (b.owner === "jev" && playerInvuln <= 0 && b.mesh.position.distanceTo(planePosition) < HIT_R) {
-      damagePlayer();
-      b.alive = false;
-      b.mesh.visible = false;
-      continue;
+    if (b.owner === "you") {
+      for (const f of livingFoes()) {
+        if (f.invuln > 0) continue;
+        if (b.mesh.position.distanceTo(f.pos) < HIT_R) {
+          damageFoe(f);
+          b.alive = false;
+          b.mesh.visible = false;
+          break;
+        }
+      }
+      if (!b.alive) continue;
+    } else {
+      const shooter = b.owner;
+      if (playerInvuln <= 0 && !crashed && b.mesh.position.distanceTo(planePosition) < HIT_R) {
+        damagePlayer();
+        b.alive = false;
+        b.mesh.visible = false;
+        continue;
+      }
+      for (const f of livingFoes()) {
+        if (f.id === shooter || f.invuln > 0) continue;
+        if (b.mesh.position.distanceTo(f.pos) < HIT_R) {
+          damageFoe(f);
+          b.alive = false;
+          b.mesh.visible = false;
+          break;
+        }
+      }
+      if (!b.alive) continue;
     }
     if (b.owner !== "you") continue;
     for (const t of targets) {
@@ -2051,95 +2066,6 @@ function tick(): void {
         b.mesh.visible = false;
         break;
       }
-    }
-  }
-
-  for (const f of flares) {
-    if (!f.alive) continue;
-    f.life -= dt;
-    f.heat = Math.max(0, f.life / FLARE_LIFE);
-    f.vel.y -= 24 * dt;
-    f.vel.multiplyScalar(Math.pow(0.982, dt * 60));
-    f.mesh.position.addScaledVector(f.vel, dt);
-    if (f.life <= 0 || f.mesh.position.y < heightAt(f.mesh.position.x, f.mesh.position.z) + 0.5) {
-      killFlare(f);
-      continue;
-    }
-    const pulse = 0.7 + Math.sin(clock.elapsedTime * 22 + f.life * 8) * 0.3;
-    f.mesh.scale.setScalar(0.9 + f.heat * 1.4 + pulse * 0.35);
-  }
-
-  for (const m of missiles) {
-    if (!m.alive) continue;
-    m.life -= dt;
-    const tgt = missileTarget(m);
-    if (tgt) {
-      missileDir.copy(tgt).sub(m.group.position);
-      const dist = missileDir.length();
-      if (dist > 0.001) missileDir.multiplyScalar(1 / dist);
-      const ang = m.vel.angleTo(missileDir);
-      if (ang > 0.0008) {
-        const t = Math.min(1, (MSL_TURN * dt) / ang);
-        m.vel.normalize().lerp(missileDir, t).multiplyScalar(MSL_SPEED);
-      } else {
-        m.vel.copy(missileDir).multiplyScalar(MSL_SPEED);
-      }
-    } else {
-      m.vel.y -= 18 * dt;
-    }
-    m.group.position.addScaledVector(m.vel, dt);
-    missileLook.copy(m.group.position).add(m.vel);
-    m.group.lookAt(missileLook);
-    const pos = m.trailPos;
-    for (let i = TRAIL_N - 1; i >= 1; i--) {
-      pos[i * 3] = pos[(i - 1) * 3]!;
-      pos[i * 3 + 1] = pos[(i - 1) * 3 + 1]!;
-      pos[i * 3 + 2] = pos[(i - 1) * 3 + 2]!;
-    }
-    pos[0] = m.group.position.x;
-    pos[1] = m.group.position.y;
-    pos[2] = m.group.position.z;
-    (m.trail.geometry as THREE.BufferGeometry).attributes.position.needsUpdate = true;
-    const hitGround = m.group.position.y < heightAt(m.group.position.x, m.group.position.z) + 1.2;
-    if (m.life <= 0 || hitGround) {
-      if (hitGround) spawnBlast(m.group.position.clone());
-      killMissile(m);
-      continue;
-    }
-    if (m.seek === "flare" && m.flare?.alive && m.group.position.distanceTo(m.flare.mesh.position) < FLARE_HIT) {
-      spawnBlast(m.flare.mesh.position.clone());
-      killFlare(m.flare);
-      killMissile(m);
-      continue;
-    }
-    if (m.owner === "you" && foeAlive && m.seek === "foe" && m.group.position.distanceTo(foePos) < MSL_HIT) {
-      spawnBlast(foePos.clone());
-      damageFoe(2);
-      killMissile(m);
-      continue;
-    }
-    if (m.owner === "jev" && m.seek !== "flare" && m.group.position.distanceTo(planePosition) < MSL_HIT) {
-      spawnBlast(planePosition.clone());
-      damagePlayer(2);
-      killMissile(m);
-      continue;
-    }
-    if (m.owner === "you" && m.seek === "balloon" && m.balloon?.alive && m.group.position.distanceTo(m.balloon.pos) < MSL_HIT) {
-      hitTarget(m.balloon);
-      killMissile(m);
-    }
-  }
-
-  const lock = !crashed ? lockCandidate() : null;
-  if (lock) lockT = Math.min(1, lockT + dt / LOCK_NEED);
-  else lockT = Math.max(0, lockT - dt * 1.8);
-  crosshair.classList.toggle("is-locking", lockT > 0.1 && lockT < 1);
-  crosshair.classList.toggle("is-locked", lockT >= 1);
-  if (audio && lock && !crashed) {
-    const gap = lockT >= 1 ? 160 : 400;
-    if (performance.now() - lastLockBeep > gap) {
-      playLockTone(audio, lockT >= 1);
-      lastLockBeep = performance.now();
     }
   }
 
@@ -2169,10 +2095,10 @@ function tick(): void {
     }
   }
 
-  if (audio && !crashed) {
+  if (audio && (!crashed || livingFoes().length)) {
     const now = audio.ctx.currentTime;
     const rush = THREE.MathUtils.clamp(0.22 + speed / 420 + turbo * 0.45, 0.15, 1);
-    audio.master.gain.setTargetAtTime(0.42, now, 0.08);
+    audio.master.gain.setTargetAtTime(crashed ? 0.22 : 0.42, now, 0.08);
     audio.airGain.gain.setTargetAtTime(0.35 + rush * 0.5, now, 0.1);
     audio.airFilter.frequency.setTargetAtTime(280 + rush * 720 + turbo * 400, now, 0.12);
     audio.rumbleGain.gain.setTargetAtTime(0.28 + turbo * 0.35, now, 0.1);
@@ -2180,20 +2106,32 @@ function tick(): void {
     audio.osc.frequency.setTargetAtTime(42 + turbo * 28 + speed * 0.04, now, 0.1);
     audio.oscGain.gain.setTargetAtTime(0.02 + turbo * 0.04, now, 0.1);
 
-    const rel = toVec.copy(foePos).sub(planePosition);
-    const range = Math.max(8, rel.length());
-    rel.multiplyScalar(1 / range);
-    const radial = foeFwd.dot(rel) * foeSpeed - forward.dot(rel) * speed;
-    const approach = -radial;
-    const doppler = THREE.MathUtils.clamp((340 + approach * 0.55) / 340, 0.62, 1.65);
-    const near = THREE.MathUtils.clamp((140 / range) ** 1.35, 0, 1.35);
-    const aliveGain = foeAlive ? 0.08 + near * 0.95 : 0.0001;
-    const pan = THREE.MathUtils.clamp((axisX.x * (foePos.x - planePosition.x) + axisX.z * (foePos.z - planePosition.z)) / range, -1, 1);
-    audio.foeGain.gain.setTargetAtTime(aliveGain, now, 0.06);
-    audio.foePan.pan.setTargetAtTime(pan, now, 0.08);
-    audio.foeAir.playbackRate.setTargetAtTime(doppler, now, 0.08);
-    audio.foeFilter.frequency.setTargetAtTime((720 + near * 900) * doppler, now, 0.1);
-    audio.foeOsc.frequency.setTargetAtTime((58 + foeTurbo * 40) * doppler, now, 0.1);
+    const nearFoe = livingFoes().reduce<Fighter | null>((best, f) => {
+      if (!best) return f;
+      return f.pos.distanceTo(planePosition) < best.pos.distanceTo(planePosition) ? f : best;
+    }, null);
+    if (nearFoe) {
+      const rel = toVec.copy(nearFoe.pos).sub(planePosition);
+      const range = Math.max(8, rel.length());
+      rel.multiplyScalar(1 / range);
+      const radial = nearFoe.fwd.dot(rel) * nearFoe.speed - forward.dot(rel) * speed;
+      const approach = -radial;
+      const doppler = THREE.MathUtils.clamp((340 + approach * 0.55) / 340, 0.62, 1.65);
+      const near = THREE.MathUtils.clamp((140 / range) ** 1.35, 0, 1.35);
+      const aliveGain = 0.08 + near * 0.95;
+      const pan = THREE.MathUtils.clamp(
+        (axisX.x * (nearFoe.pos.x - planePosition.x) + axisX.z * (nearFoe.pos.z - planePosition.z)) / range,
+        -1,
+        1,
+      );
+      audio.foeGain.gain.setTargetAtTime(aliveGain, now, 0.06);
+      audio.foePan.pan.setTargetAtTime(pan, now, 0.08);
+      audio.foeAir.playbackRate.setTargetAtTime(doppler, now, 0.08);
+      audio.foeFilter.frequency.setTargetAtTime((720 + near * 900) * doppler, now, 0.1);
+      audio.foeOsc.frequency.setTargetAtTime((58 + nearFoe.turbo * 40) * doppler, now, 0.1);
+    } else {
+      audio.foeGain.gain.setTargetAtTime(0.0001, now, 0.06);
+    }
   }
 
   (prop as THREE.Object3D).rotation.z -= (1.4 + turbo * 2.2) * frames;
@@ -2214,12 +2152,12 @@ function tick(): void {
   hudRing.textContent = String(nextRing);
   hudKills.textContent = String(kills);
   hudHpYou.textContent = String(Math.max(0, playerHp));
-  hudHpJev.textContent = String(Math.max(0, foeHp));
-  hudMsl.textContent = String(playerMsl);
-  hudFlr.textContent = String(playerFlares);
+  hudHpJev.textContent = String(livingFoes().length);
+  syncHpUi();
   drawRadar(clock.elapsedTime);
+  drawHuntArrows();
 
-  if (!crashed && !won && foeAlive) {
+  if (!won && livingFoes().length) {
     if (performance.now() > bannerUntil) banner.classList.add("is-hidden");
   } else if (!crashed && !won) {
     statusAction.textContent = turbo > 0.4 ? "TURBO" : "AIRBORNE";

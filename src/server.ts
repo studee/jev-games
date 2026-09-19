@@ -303,12 +303,12 @@ async function handleFlight(req: Request): Promise<Response> {
       maneuver: {
         type: "choice",
         instructions:
-          "You fly the RED plane. Your only job is to CHASE and SHOOT DOWN the gold player. " +
-          "Never run away. Never extend. Stay in the fight until they are dead. " +
+          "You fly a Jev fighter in a free-for-all. Hunt and shoot the plane in foe until they are dead. " +
+          "Everyone is a target. Last plane standing wins. Never run away. Never extend. " +
           "clock is where THEY are from YOUR nose (12 is ahead, 6 is behind, 3 is right). " +
           "they_are_shooting is true if they are firing guns right now. " +
-          "incoming_missile means a heat-seeker is already in the air at you — break, then re-attack. " +
-          "they_are_shooting_at_you means those rounds are pointed at you — jink then re-attack. " +
+          "they_are_shooting_at_you means those rounds are pointed at you. " +
+          "If they_have_guns_on_you, pick reverse: 180 the nose onto them, keep sliding the old way (fly backwards), and shoot. " +
           "Default is pursue or lead. Pick guns whenever lined_up is true.",
         criteria: {
           pursue: `Turn hard onto them. They are at ${g.clock}, bearing ${g.bearing_deg}°, range ${g.range}. Use this if they are not at 12 o'clock.`,
@@ -316,14 +316,16 @@ async function handleFlight(req: Request): Promise<Response> {
           guns: `HOLD AND SHOOT. lined_up=${g.lined_up}. Pick this whenever lined_up is true.`,
           climb: `Pull up while still turning toward them. They are ${g.alt_diff} above you. Only if you need their altitude — keep chasing.`,
           dive: `Push over while still turning toward them. Only if they are below you — keep chasing.`,
-          break: `Hard jink. incoming_missile=${g.incoming_missile}, they_are_shooting_at_you=${g.they_are_shooting_at_you}. Use if a missile is incoming or they are shooting at you. Then go back to pursue.`,
-          extend: `Do not pick this. Running away loses. Pick pursue instead.`,
+          break: `Hard jink only if reverse is not available. they_are_shooting_at_you=${g.they_are_shooting_at_you}.`,
+          extend: `Do not pick this. Running away loses. Pick reverse if they are on your tail, else pursue.`,
+          reverse: `They are chasing you (they_have_guns_on_you=${g.they_have_guns_on_you}). Flip 180, fly backwards, shoot them. Prefer this whenever they have guns on you.`,
         },
       },
       fire: {
         type: "noul",
         instructions:
-          "Kill the player. Fire if lined_up is true. Fire if they are at 12 o'clock and range < 180. " +
+          "Kill whoever is in foe. Fire if lined_up is true. Fire during reverse if they are now at 12. " +
+          "Fire if they are at 12 o'clock and range < 180. " +
           "Hold fire only if you would shoot dirt or they are behind you (clock 5–7).",
         criteria: {
           true: "Open fire; press the attack.",
@@ -333,7 +335,7 @@ async function handleFlight(req: Request): Promise<Response> {
     });
     const pick = result.answers?.maneuver as JevChoiceAnswer | undefined;
     const raw = (pick?.choice ?? "").toLowerCase().trim();
-    const maneuvers = ["pursue", "lead", "guns", "climb", "dive", "break", "extend"] as const;
+    const maneuvers = ["pursue", "lead", "guns", "climb", "dive", "break", "extend", "reverse"] as const;
     let maneuver = maneuvers.find((id) => raw === id || raw.includes(id));
     if (!maneuver && pick?.probabilities) {
       const top = Object.entries(pick.probabilities).sort((a, b) => (b[1] ?? 0) - (a[1] ?? 0))[0];

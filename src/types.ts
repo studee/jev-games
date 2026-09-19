@@ -164,7 +164,7 @@ export type JevResult = {
   answers?: Record<string, JevNoulAnswer | JevChoiceAnswer>;
 };
 
-export type FlightManeuver = "pursue" | "lead" | "guns" | "climb" | "dive" | "break" | "extend";
+export type FlightManeuver = "pursue" | "lead" | "guns" | "climb" | "dive" | "break" | "extend" | "reverse";
 
 export type FlightSnapshot = {
   rules: string;
@@ -181,7 +181,6 @@ export type FlightSnapshot = {
     they_have_guns_on_you: boolean;
     they_are_shooting: boolean;
     they_are_shooting_at_you: boolean;
-    incoming_missile: boolean;
     closing: boolean;
     alt_diff: number;
   };

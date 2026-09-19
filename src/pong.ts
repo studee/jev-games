@@ -40,6 +40,8 @@ const H = 500;
 const PADDLE_W = 14;
 const PADDLE_H = 92;
 const BALL_R = 8;
+const BALL_SPEED = 5.4 * 2;
+const BALL_MAX = 9.5 * 2;
 const USER_SPEED = 7.2;
 const WIN = 7;
 const LEVEL_NAMES = [
@@ -91,7 +93,7 @@ const state = {
   playing: true,
   left: { x: 28, y: (H - PADDLE_H) / 2, vy: 0, intent: "stay" as PongMove },
   right: { x: W - 28 - PADDLE_W, y: (H - PADDLE_H) / 2, vy: 0, intent: "stay" as PongMove },
-  ball: { x: W / 2, y: H / 2, vx: 5.2, vy: 2.4 },
+  ball: { x: W / 2, y: H / 2, vx: 5.2 * 2, vy: 2.4 * 2 },
   score: { left: 0, right: 0 },
   pause: 40,
   keys: { up: false, down: false },
@@ -142,7 +144,7 @@ function resetBall(direction: number): void {
   state.ball.x = W / 2;
   state.ball.y = H / 2;
   const angle = (Math.random() * 0.7 - 0.35) * Math.PI;
-  const speed = 5.4;
+  const speed = BALL_SPEED;
   state.ball.vx = Math.cos(angle) * speed * direction;
   state.ball.vy = Math.sin(angle) * speed;
   state.pause = 36;
@@ -329,7 +331,7 @@ function steerUser(dt: number): void {
 
 function bounceOff(p: Paddle, direction: number): void {
   const t = (state.ball.y - paddleCenter(p)) / (PADDLE_H / 2);
-  const mag = Math.min(9.5, Math.hypot(state.ball.vx, state.ball.vy) * 1.06);
+  const mag = Math.min(BALL_MAX, Math.hypot(state.ball.vx, state.ball.vy) * 1.06);
   const angle = clamp(t, -0.92, 0.92) * 1.12;
   state.ball.vx = Math.cos(angle) * mag * direction;
   state.ball.vy = Math.sin(angle) * mag;

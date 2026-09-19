@@ -27,12 +27,12 @@
             <span><em id="hud-hdg">000</em>°</span>
             <span><em id="hud-thr">0</em>%</span>
             <span>you <em id="hud-hp-you">5</em></span>
-            <span>jev <em id="hud-hp-jev">5</em></span>
-            <span>msl <em id="hud-msl">4</em></span>
-            <span>flr <em id="hud-flr">10</em></span>
+            <span>jevs <em id="hud-hp-jev">3</em></span>
             <span><em id="hud-kills">0</em> / <span id="hud-kills-max">0</span> hits</span>
           </div>
           <div class="flight-crosshair" id="crosshair" aria-hidden="true"></div>
+          <canvas id="hunt-arrows" aria-hidden="true"></canvas>
+          <div id="jev-bars" class="jev-bars" aria-label="Plane health"></div>
           <div class="flight-radar-wrap">
             <canvas id="radar" width="176" height="176" aria-label="Radar showing Jev"></canvas>
             <p class="flight-radar-meta"><em id="radar-rng">—</em> rng · <em id="radar-alt">LVL</em></p>
@@ -40,8 +40,8 @@
           <div class="flight-ring"><em id="hud-ring">0</em> / <span id="hud-ring-max">0</span> rings</div>
         </div>
         <div id="flight-banner" class="flight-banner">
-          <p class="flight-banner-kicker">You vs Jev</p>
-          <p id="flight-banner-text">Jev is in the red plane. Shoot them down — they will shoot back.</p>
+          <p class="flight-banner-kicker">Free-for-all</p>
+          <p id="flight-banner-text">Three Jevs, everyone shoots everyone. Last plane standing wins.</p>
           <p class="flight-banner-hint">Click the sky for engines, then fly</p>
         </div>
       </div>
@@ -57,10 +57,8 @@
         <p class="feed-kicker">TypeSafe Jev</p>
         <h1>Flight</h1>
         <p class="feed-copy">
-          Jev flies the red plane. Guns are close-in; hold the nose on them
-          until the pipper goes red, then <kbd>F</kbd> for a heat-seeker.
-          They carry missiles too — <kbd>X</kbd> dumps flares to spoof them.
-          Five hits and you're down.
+          Three Jev fighters hunt you and each other. Guns only — last plane standing wins.
+          Five hits and you're spectating.
         </p>
         <div class="feed-stat">
           <span id="pilot-action">SCRAMBLE</span>
@@ -83,9 +81,7 @@
           <li><kbd>Q</kbd><kbd>E</kbd> yaw</li>
           <li><kbd>Shift</kbd> turbo</li>
           <li><kbd>Space</kbd> / click guns</li>
-          <li><kbd>F</kbd> / right-click missile</li>
-          <li><kbd>X</kbd> flares</li>
-          <li><kbd>C</kbd> chase / close cam</li>
+          <li><kbd>C</kbd> close cam / spectate</li>
           <li><kbd>R</kbd> restart</li>
         </ul>
       </aside>
