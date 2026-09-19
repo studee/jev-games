@@ -68,6 +68,7 @@ Open **http://127.0.0.1:8765/**.
 | `/worms.html` | Worms |
 | `/flight.html` | Flight |
 | `/space.html` | Space |
+| `/space.html?mode=watch` | Space, watch Jevs |
 | `/drive.html` | Drive (no guns) |
 | `/drive.html?guns=1` | Drive with guns |
 

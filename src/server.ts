@@ -310,7 +310,7 @@ async function handleFlight(req: Request): Promise<Response> {
           "clock is where THEY are from YOUR nose (12 is ahead, 6 is behind, 3 is right). " +
           "they_are_shooting is true if they are firing guns right now. " +
           "they_are_shooting_at_you means those rounds are pointed at you. " +
-          "If they_have_guns_on_you, pick reverse: 180 the nose onto them, keep sliding the old way (fly backwards), and shoot. " +
+          "If they_have_guns_on_you, turn toward them with a real bank — never instant 180, never fly backwards. " +
           "Default is pursue or lead. Pick guns whenever lined_up is true.",
         criteria: {
           pursue: `Turn hard onto them. They are at ${g.clock}, bearing ${g.bearing_deg}°, range ${g.range}. Use this if they are not at 12 o'clock.`,
@@ -318,15 +318,15 @@ async function handleFlight(req: Request): Promise<Response> {
           guns: `HOLD AND SHOOT. lined_up=${g.lined_up}. Pick this whenever lined_up is true.`,
           climb: `Pull up while still turning toward them. They are ${g.alt_diff} above you. Only if you need their altitude — keep chasing.`,
           dive: `Push over while still turning toward them. Only if they are below you — keep chasing.`,
-          break: `Hard jink only if reverse is not available. they_are_shooting_at_you=${g.they_are_shooting_at_you}.`,
-          extend: `Do not pick this. Running away loses. Pick reverse if they are on your tail, else pursue.`,
-          reverse: `They are chasing you (they_have_guns_on_you=${g.they_have_guns_on_you}). Flip 180, fly backwards, shoot them. Prefer this whenever they have guns on you.`,
+          break: `Hard jink. they_are_shooting_at_you=${g.they_are_shooting_at_you}.`,
+          extend: `Do not pick this. Running away loses. Pick pursue.`,
+          reverse: `Turn toward a chaser. they_have_guns_on_you=${g.they_have_guns_on_you}. Bank and pitch only — no snap turn.`,
         },
       },
       fire: {
         type: "noul",
         instructions:
-          "Kill whoever is in foe. Fire if lined_up is true. Fire during reverse if they are now at 12. " +
+          "Kill whoever is in foe. Fire if lined_up is true. " +
           "Fire if they are at 12 o'clock and range < 180. " +
           "Hold fire only if you would shoot dirt or they are behind you (clock 5–7).",
         criteria: {
@@ -372,7 +372,7 @@ async function handleSpace(req: Request): Promise<Response> {
           "You fly a Jev starfighter in a solar-system free-for-all. Hunt and laser the ship in foe until they are dead. " +
           "Everyone is a target. Last ship standing wins. Never run. Never extend. " +
           "clock is where THEY are from YOUR nose (12 is ahead, 6 is behind). " +
-          "If they_have_guns_on_you, pick reverse: 180 the nose onto them, drift backwards, and fire lasers. " +
+          "If they_have_guns_on_you, turn toward them with a real bank — never instant 180, never fly backwards. " +
           "Pick guns whenever lined_up is true.",
         criteria: {
           pursue: `Turn onto them. They are at ${g.clock}, bearing ${g.bearing_deg}°, range ${g.range}.`,
@@ -382,7 +382,7 @@ async function handleSpace(req: Request): Promise<Response> {
           dive: `Pitch down while still turning toward them.`,
           break: `Jink only if reverse is not available. they_are_shooting_at_you=${g.they_are_shooting_at_you}.`,
           extend: `Do not pick this. Pick reverse if they are on your tail, else pursue.`,
-          reverse: `They are chasing you (they_have_guns_on_you=${g.they_have_guns_on_you}). Flip 180, fly backwards, laser them.`,
+          reverse: `Turn toward a chaser. they_have_guns_on_you=${g.they_have_guns_on_you}. Bank and pitch only — no snap turn.`,
         },
       },
       fire: {

@@ -750,8 +750,6 @@ type Fighter = {
   breakDir: number;
   spawn: THREE.Vector3;
   lastShot: number;
-  backFlight: boolean;
-  revUntil: number;
   bar: THREE.Group;
   barFill: THREE.Mesh;
 };
@@ -798,8 +796,6 @@ function makeFighter(id: number, spec: (typeof FOE_SKINS)[number]): Fighter {
     breakDir: Math.random() < 0.5 ? 1 : -1,
     spawn: new THREE.Vector3(...spec.spawn),
     lastShot: -9999,
-    backFlight: false,
-    revUntil: 0,
     bar: hp.bar,
     barFill: hp.barFill,
   };
@@ -1097,8 +1093,8 @@ function clockLabel(bearing: number): string {
 }
 
 function huntManeuver(lined: boolean, shotAt: boolean, range: number): FlightManeuver {
-  if (shotAt && !lined) return "reverse";
   if (lined) return "guns";
+  if (shotAt) return "break";
   if (range < 160) return "lead";
   return "pursue";
 }
@@ -1208,17 +1204,6 @@ function gunsOnMe(f: Fighter): Hunt | null {
   return best;
 }
 
-function snapYaw180(f: Fighter): void {
-  f.axisX.negate();
-  f.axisZ.negate();
-  orthonormalize(f.axisX, f.axisY, f.axisZ);
-  f.fwd.copy(f.axisZ).negate();
-  f.yaw = 0;
-  f.pitch = 0;
-  f.stickBank = 0;
-  f.stickPitch = 0;
-}
-
 function snapshotFlight(f: Fighter, hunt: Hunt): FlightSnapshot {
   const you = sight(f.pos, f.fwd, f.axisX, f.axisY, hunt.pos);
   const them = sight(hunt.pos, hunt.fwd, hunt.right, hunt.up, f.pos);
@@ -1226,7 +1211,7 @@ function snapshotFlight(f: Fighter, hunt: Hunt): FlightSnapshot {
   return {
     rules:
       `You are ${f.name} in a three-Jev free-for-all plus the gold player. Hunt the plane in foe. ` +
-      "If they_have_guns_on_you, reverse: 180 onto them, fly backwards, shoot. " +
+      "Stay nose-forward. Turn to face threats; never flip in place. " +
       "clock is where they sit relative to your nose. they_are_shooting means they pulled the trigger. " +
       "Stay aggressive. Last plane standing wins. Do not run.",
     you: {
@@ -1282,11 +1267,9 @@ async function askJev(f: Fighter): Promise<void> {
     if (!res.ok) throw new Error(data.detail || data.error || `http ${res.status}`);
     const shotAt = hunt.shooting && them.lined;
     let next = data.maneuver ?? huntManeuver(you.lined, shotAt, you.range);
-    if (next === "extend") next = them.lined ? "reverse" : "pursue";
+    if (next === "extend" || next === "reverse") next = "pursue";
     if (next === "climb" && f.pos.y - heightAt(f.pos.x, f.pos.z) > FIGHT_AGL_PREF) next = "pursue";
-    if (next === "break" && them.lined) next = "reverse";
     if (next === "break" && !shotAt) next = you.lined ? "guns" : "pursue";
-    if (them.lined && !you.lined) next = "reverse";
     f.maneuver = next;
     f.wantFire = Number(data.fire ?? 0) >= 0.35 || you.lined;
     statusAction.textContent = `${f.name}  ${f.maneuver.toUpperCase()}`;
@@ -1335,7 +1318,7 @@ function steerFoe(f: Fighter, hunt: Hunt, _frames: number): { bank: number; pitc
     gAim + FIGHT_AGL_MAX,
   );
   const lead = sight(f.pos, f.fwd, f.axisX, f.axisY, aimPoint);
-  const look = f.backFlight || f.maneuver === "reverse" || f.maneuver === "guns" ? you : lead;
+  const look = f.maneuver === "guns" ? you : lead;
   const shotAt = hunt.shooting && them.lined;
   const agl = f.pos.y - heightAt(f.pos.x, f.pos.z);
   let bank = 0;
@@ -1347,7 +1330,7 @@ function steerFoe(f: Fighter, hunt: Hunt, _frames: number): { bank: number; pitc
   if (Math.abs(look.bearing) > 0.22 && agl < FIGHT_AGL_PREF) pitch = Math.max(pitch, 0.45);
   if (f.maneuver === "climb" && agl < FIGHT_AGL_PREF - 4) pitch = 1;
   if (f.maneuver === "dive" || agl > FIGHT_AGL_PREF + 6) pitch = Math.min(pitch, -0.35);
-  if (!f.backFlight && f.maneuver !== "reverse" && (shotAt || f.maneuver === "break")) {
+  if (shotAt || f.maneuver === "break") {
     bank = f.breakDir * 0.55;
     if (Math.abs(look.bearing) > 0.35) bank = (look.bearing > 0 ? -1 : 1) * 0.55;
     pitch = agl > FIGHT_AGL_PREF ? -0.25 : pitch * 0.6;
@@ -1359,7 +1342,7 @@ function steerFoe(f: Fighter, hunt: Hunt, _frames: number): { bank: number; pitc
   if (agl > FIGHT_AGL_MAX - 8) pitch = Math.min(pitch, -0.75);
   if (agl > FIGHT_AGL_MAX) pitch = -1;
   const pointed = Math.abs(look.bearing) < 0.85 && you.along > -0.1;
-  const turboOn = !f.backFlight && f.maneuver !== "reverse" && you.range > 150 && pointed && agl < FIGHT_AGL_MAX - 4;
+  const turboOn = you.range > 150 && pointed && agl < FIGHT_AGL_MAX - 4;
   return { bank, pitch, turboOn };
 }
 
@@ -1496,8 +1479,6 @@ function reset(): void {
     f.askAt = performance.now() + 350 + f.id * 160;
     f.breakDir = Math.random() < 0.5 ? 1 : -1;
     f.lastShot = -9999;
-    f.backFlight = false;
-    f.revUntil = 0;
     f.pos.copy(f.spawn);
     f.axisX.set(-1, 0, 0);
     f.axisY.set(0, 1, 0);
@@ -1905,22 +1886,7 @@ function tick(): void {
   plane.matrixWorldNeedsUpdate = true;
 
   for (const f of livingFoes()) {
-    const tail = gunsOnMe(f);
-    const nowMs = performance.now();
-    if ((tail || f.maneuver === "reverse") && !f.backFlight) {
-      const faceAt = tail ?? bestHunt(f);
-      const facing = faceAt ? sight(f.pos, f.fwd, f.axisX, f.axisY, faceAt.pos) : null;
-      if (!facing?.lined) snapYaw180(f);
-      f.backFlight = true;
-      f.revUntil = nowMs + 2400;
-      f.maneuver = "reverse";
-      f.wantFire = true;
-    } else if (f.backFlight && (tail || f.maneuver === "reverse")) {
-      f.revUntil = Math.max(f.revUntil, nowMs + 400);
-    } else if (f.backFlight && nowMs > f.revUntil) {
-      f.backFlight = false;
-    }
-    const hunt = f.backFlight && tail ? tail : bestHunt(f);
+    const hunt = gunsOnMe(f) ?? bestHunt(f);
     const stick = hunt ? steerFoe(f, hunt, frames) : { bank: 0, pitch: 0.2, turboOn: false };
     f.stickBank += (stick.bank - f.stickBank) * Math.min(1, 0.035 * frames);
     f.stickPitch += (stick.pitch - f.stickPitch) * Math.min(1, 0.035 * frames);
@@ -1949,7 +1915,7 @@ function tick(): void {
     const foeBoost = easeOutQuad(f.turbo) * (1.15 + far * 1.15);
     f.speed = (CRUISE + foeBoost) * 60;
     const step = (CRUISE + foeBoost) * frames;
-    f.pos.addScaledVector(f.axisZ, (f.backFlight ? 1 : -1) * step);
+    f.pos.addScaledVector(f.axisZ, -step);
     const ceil = fightCeiling(f.pos.x, f.pos.z);
     const floor = fightFloor(f.pos.x, f.pos.z);
     if (f.pos.y < floor) {
@@ -1971,11 +1937,7 @@ function tick(): void {
     f.fireCool = Math.max(0, f.fireCool - dt);
     const onTarget =
       hunt != null && chase.along > 0.2 && Math.abs(chase.bearing) < 0.28 && Math.abs(chase.elevation) < 0.24;
-    const mayFire =
-      f.fireCool <= 0 &&
-      onTarget &&
-      (f.backFlight || f.maneuver === "reverse" || f.maneuver !== "break") &&
-      (f.wantFire || onTarget || f.backFlight);
+    const mayFire = f.fireCool <= 0 && onTarget && f.maneuver !== "break" && (f.wantFire || onTarget);
     if (mayFire) {
       f.gunSide = fireFrom(f.id, f.mesh.matrix, f.fwd, f.rot, f.gunSide);
       f.fireCool = 0.09;

@@ -20,6 +20,11 @@ const banner = document.querySelector("#flight-banner")!;
 const bannerText = document.querySelector("#flight-banner-text")!;
 const statusAction = document.querySelector("#pilot-action")!;
 const statusMeta = document.querySelector("#pilot-meta")!;
+const watchMode = new URLSearchParams(location.search).get("mode") === "watch";
+document.body.classList.toggle("space-watch", watchMode);
+for (const a of document.querySelectorAll<HTMLAnchorElement>(".mode-row a")) {
+  a.classList.toggle("is-active", (a.dataset.mode === "watch") === watchMode);
+}
 
 /** World units per astronomical unit — inner hops are seconds, Neptune is a few minutes. */
 const AU = 420;
@@ -74,8 +79,6 @@ type Fighter = {
   breakDir: number;
   spawn: THREE.Vector3;
   lastShot: number;
-  backFlight: boolean;
-  revUntil: number;
   bar: THREE.Group;
   barFill: THREE.Mesh;
 };
@@ -355,8 +358,6 @@ function makeFighter(id: number, spec: (typeof FOE_SKINS)[number]): Fighter {
     breakDir: Math.random() < 0.5 ? 1 : -1,
     spawn: spawn.clone(),
     lastShot: -9999,
-    backFlight: false,
-    revUntil: 0,
     bar: hp.bar,
     barFill: hp.barFill,
   };
@@ -403,6 +404,7 @@ let bannerUntil = 0;
 let playerHp = MAX_HP;
 let playerInvuln = 0;
 let specI = 0;
+let specAt = 0;
 let fireCool = 0;
 let mouseDown = false;
 let lastPlayerShot = -9999;
@@ -564,16 +566,6 @@ function gunsOnMe(f: Fighter): Hunt | null {
   }
   return best;
 }
-function snapYaw180(f: Fighter): void {
-  f.axisX.negate();
-  f.axisZ.negate();
-  orthonormalize(f.axisX, f.axisY, f.axisZ);
-  f.fwd.copy(f.axisZ).negate();
-  f.yaw = 0;
-  f.pitch = 0;
-  f.stickBank = 0;
-  f.stickPitch = 0;
-}
 
 function nearestBodyName(p: THREE.Vector3): string {
   let name = "Sun";
@@ -645,7 +637,7 @@ function fireLaser(owner: "you" | number, from: THREE.Vector3, dir: THREE.Vector
 
 function maybeLast(): void {
   const live = livingFoes();
-  const youLive = !crashed && playerHp > 0;
+  const youLive = !watchMode && !crashed && playerHp > 0;
   if (youLive && live.length === 0) {
     won = true;
     banner.classList.remove("is-hidden");
@@ -664,7 +656,7 @@ function maybeLast(): void {
 }
 
 function damagePlayer(): void {
-  if (playerInvuln > 0 || crashed) return;
+  if (watchMode || playerInvuln > 0 || crashed) return;
   playerHp -= 1;
   playerInvuln = 0.7;
   playBoom();
@@ -714,8 +706,8 @@ function bodyHit(p: THREE.Vector3): string | null {
 }
 
 function huntManeuver(lined: boolean, shotAt: boolean, range: number): FlightManeuver {
-  if (shotAt && !lined) return "reverse";
   if (lined) return "guns";
+  if (shotAt) return "break";
   if (range < 180) return "lead";
   return "pursue";
 }
@@ -727,7 +719,7 @@ function snapshotFlight(f: Fighter, hunt: Hunt): SpaceSnapshot {
   return {
     rules:
       `You are ${f.name} in a solar-system furball. Laser the ship in foe. Last standing wins. ` +
-      "If they_have_guns_on_you, reverse 180 and fire. Do not run.",
+      "Stay nose-forward. Turn to face threats; never flip in place. Do not run.",
     you: {
       hp: f.hp,
       x: Math.round(f.pos.x),
@@ -781,8 +773,8 @@ async function askJev(f: Fighter): Promise<void> {
     if (!res.ok) throw new Error(data.detail || data.error || `http ${res.status}`);
     const shotAt = hunt.shooting && them.lined;
     let next = data.maneuver ?? huntManeuver(you.lined, shotAt, you.range);
-    if (next === "extend") next = them.lined ? "reverse" : "pursue";
-    if (them.lined && !you.lined) next = "reverse";
+    if (next === "extend" || next === "reverse") next = "pursue";
+    if (next === "break" && !shotAt) next = you.lined ? "guns" : "pursue";
     f.maneuver = next;
     f.wantFire = Number(data.fire ?? 0) >= 0.35 || you.lined;
     statusAction.textContent = `${f.name}  ${f.maneuver.toUpperCase()}`;
@@ -816,20 +808,20 @@ function steerFoe(f: Fighter, hunt: Hunt): { bank: number; pitch: number; turboO
   const leadAmt = THREE.MathUtils.clamp(you.range * 0.16, 8, 50);
   aimPoint.copy(hunt.pos).addScaledVector(hunt.fwd, leadAmt);
   const lead = sight(f.pos, f.fwd, f.axisX, f.axisY, aimPoint);
-  const look = f.backFlight || f.maneuver === "reverse" || f.maneuver === "guns" ? you : lead;
+  const look = f.maneuver === "guns" ? you : lead;
   let bank = 0;
   let pitch = 0;
   if (look.bearing > 0.04) bank = -1;
   else if (look.bearing < -0.04) bank = 1;
   if (look.elevation > 0.04) pitch = 1;
   else if (look.elevation < -0.04) pitch = -1;
-  if (!f.backFlight && f.maneuver === "break") bank = f.breakDir * 0.5;
+  if (f.maneuver === "break") bank = f.breakDir * 0.5;
   const sunDist = f.pos.length();
   if (sunDist < SUN_R + 80) {
     pitch = f.pos.y > 0 ? 0.4 : -0.4;
     bank *= 0.4;
   }
-  const turboOn = !f.backFlight && you.range > 160 && Math.abs(look.bearing) < 0.8;
+  const turboOn = you.range > 160 && Math.abs(look.bearing) < 0.8;
   void them;
   return { bank, pitch, turboOn };
 }
@@ -873,7 +865,15 @@ function reset(): void {
   playerHp = MAX_HP;
   playerInvuln = 0;
   plane.visible = true;
+  if (watchMode) {
+    crashed = true;
+    playerHp = 0;
+    plane.visible = false;
+    youHp.bar.visible = false;
+  }
+  youBarUi.row.style.display = watchMode ? "none" : "";
   specI = 0;
+  specAt = performance.now();
   jevBusy = false;
   for (const f of foes) {
     f.hp = MAX_HP;
@@ -888,7 +888,6 @@ function reset(): void {
     f.fireCool = 0;
     f.maneuver = "pursue";
     f.wantFire = false;
-    f.backFlight = false;
     f.askAt = performance.now() + 300 + f.id * 150;
     f.pos.copy(spawnOutboard(0.05 + f.id * 0.07, 58 + f.id * 12));
     lookToward(f.pos, new THREE.Vector3(0, 0, 0), f.axisX, f.axisY, f.axisZ);
@@ -900,10 +899,17 @@ function reset(): void {
   camera.fov = 62;
   camera.updateProjectionMatrix();
   banner.classList.remove("is-hidden");
-  bannerText.textContent = "Solar furball. Lasers only. Last ship standing.";
-  bannerUntil = performance.now() + 4200;
-  statusAction.textContent = "SCRAMBLE";
-  statusMeta.textContent = "near Earth";
+  if (watchMode) {
+    bannerText.textContent = "Watching Jevs. C cycles cameras. Last ship standing.";
+    bannerUntil = performance.now() + 3800;
+    statusAction.textContent = "WATCH";
+    statusMeta.textContent = "Jev vs Jev near Earth";
+  } else {
+    bannerText.textContent = "Solar furball. Lasers only. Last ship standing.";
+    bannerUntil = performance.now() + 4200;
+    statusAction.textContent = "SCRAMBLE";
+    statusMeta.textContent = "near Earth";
+  }
   feedList?.replaceChildren();
 }
 
@@ -1034,8 +1040,10 @@ window.addEventListener("pointerup", () => {
 window.addEventListener("keydown", (e) => {
   if (e.code === "KeyR") reset();
   if (e.code === "KeyC") {
-    if (crashed) specI += 1;
-    else closeCam = !closeCam;
+    if (watchMode || crashed) {
+      specI += 1;
+      specAt = performance.now();
+    } else closeCam = !closeCam;
   }
   if (e.code === "Space") ensureAudio();
 });
@@ -1103,20 +1111,7 @@ function tick(): void {
   (youGlow.material as THREE.MeshBasicMaterial).color.setHex(turbo > 0.3 ? 0xb4fff0 : 0x6aa8ff);
 
   for (const f of livingFoes()) {
-    const tail = gunsOnMe(f);
-    const nowMs = performance.now();
-    if ((tail || f.maneuver === "reverse") && !f.backFlight) {
-      const faceAt = tail ?? bestHunt(f);
-      const facing = faceAt ? sight(f.pos, f.fwd, f.axisX, f.axisY, faceAt.pos) : null;
-      if (!facing?.lined) snapYaw180(f);
-      f.backFlight = true;
-      f.revUntil = nowMs + 2200;
-      f.maneuver = "reverse";
-      f.wantFire = true;
-    } else if (f.backFlight && (tail || f.maneuver === "reverse")) {
-      f.revUntil = Math.max(f.revUntil, nowMs + 400);
-    } else if (f.backFlight && nowMs > f.revUntil) f.backFlight = false;
-    const hunt = f.backFlight && tail ? tail : bestHunt(f);
+    const hunt = gunsOnMe(f) ?? bestHunt(f);
     const stick = hunt ? steerFoe(f, hunt) : { bank: 0, pitch: 0, turboOn: false };
     f.stickBank += (stick.bank - f.stickBank) * Math.min(1, 0.035 * frames);
     f.stickPitch += (stick.pitch - f.stickPitch) * Math.min(1, 0.035 * frames);
@@ -1144,7 +1139,7 @@ function tick(): void {
     const foeBoost = easeOut(f.turbo) * 2.6;
     f.speed = (CRUISE + foeBoost) * 60;
     const step = (CRUISE + foeBoost) * frames;
-    f.pos.addScaledVector(f.axisZ, (f.backFlight ? 1 : -1) * step);
+    f.pos.addScaledVector(f.axisZ, -step);
     if (f.pos.length() < SUN_R + 90) f.pos.setLength(SUN_R + 90);
     f.fwd.copy(f.axisZ).negate();
     f.rot.makeBasis(f.axisX, f.axisY, f.axisZ);
@@ -1153,10 +1148,15 @@ function tick(): void {
     f.mesh.matrixWorldNeedsUpdate = true;
     f.fireCool = Math.max(0, f.fireCool - dt);
     const onTarget = hunt != null && chase.along > 0.25 && Math.abs(chase.bearing) < 0.22 && Math.abs(chase.elevation) < 0.2;
-    if (f.fireCool <= 0 && onTarget && (f.wantFire || f.backFlight || onTarget)) {
+    if (f.fireCool <= 0 && onTarget && (f.wantFire || onTarget)) {
       fireLaser(f.id, f.pos.clone().addScaledVector(f.fwd, 4), f.fwd.clone());
       f.fireCool = 0.18;
     }
+  }
+
+  if (crashed && livingFoes().length && performance.now() - specAt > 7500) {
+    specI += 1;
+    specAt = performance.now();
   }
 
   const viewFoe = crashed ? specFoe() : null;
